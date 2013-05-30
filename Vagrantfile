@@ -33,7 +33,8 @@ Vagrant.configure("2") do |config|
         }
       }
       chef.run_list = [
-        "recipe[nodejs]"
+        "recipe[nodejs]",
+        "recipe[git]"
       ]
     end
   end
