@@ -1,0 +1,44 @@
+{
+  "name": "ce-front-end",
+  "version": "0.0.0",
+  "description": "Front end implementation for currency exchange service",
+  "main": "lib/src/index.js",
+  "scripts": {
+    "prepublish": "grunt build",
+    "prestart": "grunt build",
+    "start": "node lib/src/index.js",
+    "test": "grunt",
+    "travis-cov": {
+      "threshold": 100
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pghalliday/ce-front-end.git"
+  },
+  "keywords": [
+    "currency",
+    "exchange",
+    "web",
+    "service"
+  ],
+  "author": "Peter Halliday",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "gitHead": "688c8e532b714ba50df6e7af21ad7d7253cfe06b",
+  "devDependencies": {
+    "grunt-cli": "~0.1.9",
+    "grunt": "~0.4.1",
+    "grunt-mocha-test": "~0.4.0",
+    "chai": "~1.6.0",
+    "grunt-contrib-coffee": "~0.7.0",
+    "grunt-contrib-clean": "~0.4.1",
+    "blanket": "~1.1.4",
+    "travis-cov": "~0.2.4",
+    "child-daemon": "0.0.2"
+  },
+  "dependencies": {
+    "engine.io": "~0.5.0",
+    "express": "~3.2.5"
+  }
+}
