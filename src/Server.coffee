@@ -1,10 +1,15 @@
-engine = require 'engine.io'
 http = require 'http'
+engine = require 'engine.io'
+express = require 'express'
 
 module.exports = class Server
   constructor: (@options) ->
-    @httpServer = http.createServer()
+    @expressServer = express()
+    @httpServer = http.createServer @expressServer
     @engineServer = engine.attach @httpServer
+    
+    @expressServer.get '/', (request, response) ->
+      response.send 200, 'hello'
 
   stop: (callback) =>
     try
