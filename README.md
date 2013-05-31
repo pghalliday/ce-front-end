@@ -1,6 +1,9 @@
 ce-front-end
 ============
 
+[![Build Status](https://travis-ci.org/pghalliday/ce-front-end.png?branch=master)](https://travis-ci.org/pghalliday/ce-front-end)
+[![Dependency Status](https://gemnasium.com/pghalliday/ce-front-end.png)](https://gemnasium.com/pghalliday/ce-front-end)
+
 Front end implementation for currency exchange service.
 
 # Starting the server
