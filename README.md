@@ -6,7 +6,11 @@ ce-front-end
 
 Front end implementation for currency exchange service.
 
-# Starting the server
+## Features
+
+- Accepts websocket (engine.io) connections
+
+## Starting the server
 
 ```
 $ npm start
@@ -14,8 +18,6 @@ $ npm start
 
 ## Roadmap
 
-- Accept websocket connections?
-  - engine.io?
 - Implement web page to connect to websocket interface
 - Accept JSON operations
 - Submit JSON operations to ce-operation-log 
