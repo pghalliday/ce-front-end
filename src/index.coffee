@@ -1,6 +1,10 @@
-engine = require 'engine.io'
-server = engine.listen 3000, ->
-  console.log 'ce-front-end started'
+Server = require './Server'
 
-# server.on 'connection', (socket) ->
-#   socket.send 'utf 8 string'
+server = new Server
+  port: 3000
+
+server.start (error) ->
+  if (error)
+    console.log error
+  else
+    console.log 'ce-front-end started'
