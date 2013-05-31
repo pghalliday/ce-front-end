@@ -9,6 +9,7 @@ Front end implementation for currency exchange service.
 ## Features
 
 - Accepts websocket (engine.io) connections
+- Connects to a ce-operation-hub instance using 0MQ
 
 ## Starting the server
 
@@ -20,7 +21,7 @@ $ npm start
 
 - Implement web page to connect to websocket interface
 - Accept JSON operations
-- Submit JSON operations to ce-operation-log 
+- Submit JSON operations to ce-operation-hub 
 - Report success or failure of JSON operations
 - Account creation
 - Authentication

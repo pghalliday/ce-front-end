@@ -29,12 +29,20 @@ Vagrant.configure("2") do |config|
       chef.json = {
         "nodejs" => {
           "install_method" => "source",
-          "version" => "0.10.8"
+          "version" => "0.10.9"
+        },
+        "git" => {
+          "version" => "1.8.3"
+        },
+        "zeromq" => {
+          "version" => "3.2.3",
+          "url" => "http://download.zeromq.org"
         }
       }
       chef.run_list = [
         "recipe[nodejs]",
-        "recipe[git]"
+        "recipe[git]",
+        "recipe[zeromq]"
       ]
     end
   end

@@ -42,6 +42,8 @@
   },
   "dependencies": {
     "engine.io": "~0.5.0",
-    "express": "~3.2.5"
+    "express": "~3.2.5",
+    "zmq": "~2.4.0",
+    "node-uuid": "~1.4.0"
   }
 }
