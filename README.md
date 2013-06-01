@@ -8,7 +8,8 @@ Front end implementation for currency exchange service.
 
 ## Features
 
-- Accepts websocket (engine.io) connections
+- Accepts HTTP connections
+- Accepts engine.io connections
 - Connects to a ce-operation-hub instance using 0MQ
 
 ## Starting the server
@@ -19,18 +20,25 @@ $ npm start
 
 ## Roadmap
 
-- Implement web page to connect to websocket interface
-- Accept JSON operations
-- Submit JSON operations to ce-operation-hub 
-- Report success or failure of JSON operations
 - Account creation
 - Authentication
-- Query order books
-- Stream trades
-- Stream order book changes
-- Query balances
-- Query operation history
-- Query trade history
+- Accept JSON operations using REST API
+  - authenticated
+  - validated
+  - Forward operations to ce-operation-hub
+- Stream trades over engine.io socket
+  - send trades with sequence IDs so that a client can detect if any have been missed
+  - accept a last known sequence ID parameter and flush trades after that ID to present so that disconnected clients can catch up
+  - forward trades from ce-trade-log
+- Stream order book changes over engine.io socket
+  - send order book deltas with sequence IDs so that a client can detect if any have been missed
+  - accept a last known sequence ID parameter and flush order book deltas after that ID to present so that disconnected clients can catch up
+  - forward order book deltas from ce-order-log
+- Query order book state using REST API
+- Query account information using REST API
+  - balances
+  - operation history
+  - trade history
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using: 
