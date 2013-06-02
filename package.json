@@ -44,6 +44,7 @@
     "engine.io": "~0.6.0",
     "express": "~3.2.5",
     "zmq": "~2.4.0",
-    "node-uuid": "~1.4.0"
+    "node-uuid": "~1.4.0",
+    "passport": "~0.1.17"
   }
 }

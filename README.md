@@ -22,23 +22,42 @@ $ npm start
 
 - Account creation
 - Authentication
+  - local authentication
+  - 2 factor authentication (TOTP)
 - Accept JSON operations using REST API
   - authenticated
   - validated
   - Forward operations to ce-operation-hub
+  - POST
+    - /[account]/orders/[bid-currency]/[offer-currency]/
+    - /[account]/withdrawals/[currency]/
+  - DELETE
+    - /[account]/orders/[bid-currency]/[offer-currency]/[id]
 - Stream trades over engine.io socket
   - send trades with sequence IDs so that a client can detect if any have been missed
   - accept a last known sequence ID parameter and flush trades after that ID to present so that disconnected clients can catch up
   - forward trades from ce-trade-log
+  - /trades/[bid-currency]/[offer-currency]/
 - Stream order book changes over engine.io socket
   - send order book deltas with sequence IDs so that a client can detect if any have been missed
   - accept a last known sequence ID parameter and flush order book deltas after that ID to present so that disconnected clients can catch up
   - forward order book deltas from ce-order-log
+  - /orders/[bid-currency]/[offer-currency]/  
+- Query trade history using REST API
+  - GET
+    - /trades/[bid-currency]/[offer-currency]/
 - Query order book state using REST API
+  - GET
+    - /orders/[bid-currency]/[offer-currency]/
 - Query account information using REST API
-  - balances
-  - operation history
-  - trade history
+  - authenticated
+  - GET
+    - /[account]/balances/[currency]/
+    - /[account]/orders/[bid-currency]/[offer-currency]/
+    - /[account]/trades/[bid-currency]/[offer-currency]/
+    - /[account]/withdrawals/[currency]/
+    - /[account]/deposits/[currency]/
+    - (??) /[account]/operations/
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using: 
