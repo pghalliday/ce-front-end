@@ -20,44 +20,50 @@ $ npm start
 
 ## Roadmap
 
-- Account creation
-- Authentication
-  - local authentication
-  - 2 factor authentication (TOTP)
-- Accept JSON operations using REST API
-  - authenticated
-  - validated
+- Submit JSON operations via REST API
   - Forward operations to ce-operation-hub
-  - POST
-    - /[account]/orders/[bid-currency]/[offer-currency]/
-    - /[account]/withdrawals/[currency]/
-  - DELETE
-    - /[account]/orders/[bid-currency]/[offer-currency]/[id]
+  - `POST`
+    - `/accounts/[account]/orders/[bid-currency]/[offer-currency]/`
+    - `/accounts/[account]/withdrawals/[currency]/`
+  - `DELETE`
+    - `/accounts/[account]/orders/[bid-currency]/[offer-currency]/[id]`
+- Query order book state via REST API
+  - `GET`
+    - `/orders/[bid-currency]/[offer-currency]/`
+- Query trade history via REST API
+  - `GET`
+    - `/trades/[bid-currency]/[offer-currency]/`
+- Query order book deltas via REST API
+  - `GET`
+    - `/deltas/[bid-currency]/[offer-currency]/`
 - Stream trades over engine.io socket
   - send trades with sequence IDs so that a client can detect if any have been missed
   - accept a last known sequence ID parameter and flush trades after that ID to present so that disconnected clients can catch up
   - forward trades from ce-trade-log
-  - /trades/[bid-currency]/[offer-currency]/
+  - `/trades/[bid-currency]/[offer-currency]/`
 - Stream order book changes over engine.io socket
   - send order book deltas with sequence IDs so that a client can detect if any have been missed
   - accept a last known sequence ID parameter and flush order book deltas after that ID to present so that disconnected clients can catch up
   - forward order book deltas from ce-order-log
-  - /orders/[bid-currency]/[offer-currency]/  
-- Query trade history using REST API
-  - GET
-    - /trades/[bid-currency]/[offer-currency]/
-- Query order book state using REST API
-  - GET
-    - /orders/[bid-currency]/[offer-currency]/
-- Query account information using REST API
-  - authenticated
-  - GET
-    - /[account]/balances/[currency]/
-    - /[account]/orders/[bid-currency]/[offer-currency]/
-    - /[account]/trades/[bid-currency]/[offer-currency]/
-    - /[account]/withdrawals/[currency]/
-    - /[account]/deposits/[currency]/
-    - (??) /[account]/operations/
+  - `/deltas/[bid-currency]/[offer-currency]/` 
+- Query account information via REST API
+  - `GET`
+    - `/accounts/[account]/balances/[currency]/`
+    - `/accounts/[account]/orders/[bid-currency]/[offer-currency]/`
+    - `/accounts/[account]/trades/[bid-currency]/[offer-currency]/`
+    - `/accounts/[account]/withdrawals/[currency]/`
+    - `/accounts/[account]/deposits/[currency]/`
+    - (??) `/accounts/[account]/operations/`
+- Account creation via REST API
+  - `POST`
+    - `/accounts/`
+- Account updates via REST API
+  - `PUT`
+    - `/accounts/[account]`
+- Authentication
+  - local authentication
+  - 2 factor authentication (TOTP)
+  - Authenticate `/accounts/[account]/` interfaces
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using: 
