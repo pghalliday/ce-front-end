@@ -35,7 +35,7 @@
     "grunt-contrib-clean": "~0.4.1",
     "travis-cov": "~0.2.4",
     "child-daemon": "0.0.2",
-    "engine.io-client": "~0.5.0",
+    "engine.io-client": "~0.6.0",
     "grunt-blanket": "0.0.8",
     "grunt-contrib-copy": "~0.4.1",
     "supertest": "~0.6.0"
