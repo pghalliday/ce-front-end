@@ -1,6 +1,7 @@
 chai = require 'chai'
 chai.should()
 expect = chai.expect
+Checklist = require 'checklist'
 
 Server = require '../../src/Server'
 
@@ -31,7 +32,7 @@ describe 'Server', ->
 
   describe 'when started', ->
     beforeEach (done) ->
-      @ceOperationHub = zmq.socket 'rep'
+      @ceOperationHub = zmq.socket 'xrep'
       @ceOperationHub.bindSync 'tcp://127.0.0.1:8001'
       @server = new Server
         port: 8000
@@ -44,29 +45,33 @@ describe 'Server', ->
         @ceOperationHub.close()
         done error
 
-    it 'should listen for HTTP connections on the specified port', (done) ->
+    it 'should return the home page from /', (done) ->
       @request
       .get('/')
+      .set('Accept', 'text/html')
       .expect(200)
+      .expect('Content-Type', /html/)
       .expect 'hello', done
 
     it 'should accept orders posted to /accounts/[account]/orders/ and forward them to the ce-operation-hub', (done) ->
       id = uuid.v1()
-      @ceOperationHub.on 'message', (message) =>
-        order = JSON.parse message
+      @ceOperationHub.on 'message', =>
+        args = Array.apply null, arguments
+        order = JSON.parse args[2]
         order.bidCurrency.should.equal 'EUR'
-        order.orderCurrency.should.equal 'BTC'
+        order.offerCurrency.should.equal 'BTC'
         order.bidPrice.should.equal '100'
         order.bidAmount.should.equal '50'
         order.account.should.equal 'Peter'
         order.id = id
-        @ceOperationHub.send JSON.stringify order
+        args[2] = JSON.stringify order
+        @ceOperationHub.send args
       @request
       .post('/accounts/Peter/orders/')
       .set('Accept', 'application/json')
       .send
         bidCurrency: 'EUR'
-        orderCurrency: 'BTC'
+        offerCurrency: 'BTC'
         bidPrice: '100'
         bidAmount: '50'
       .expect(200)
@@ -74,11 +79,80 @@ describe 'Server', ->
       .end (error, response) =>
         order = response.body
         order.bidCurrency.should.equal 'EUR'
-        order.orderCurrency.should.equal 'BTC'
+        order.offerCurrency.should.equal 'BTC'
         order.bidPrice.should.equal '100'
         order.bidAmount.should.equal '50'
         order.id.should.equal id
         done()
 
-
-
+    it 'should accept multiple orders posted simultaneously to /accounts/[account]/orders/ and forward them to the ce-operation-hub', (done) ->
+      timeouts = [1000, 500, 0]
+      timeoutIndex = 0
+      checklist = new Checklist [
+        'EURBTC'
+        'BTCEUR'
+        'USDBTC'
+        ], done
+      @ceOperationHub.on 'message', (message) =>
+        args = Array.apply null, arguments
+        order = JSON.parse args[2]
+        order.id = order.bidCurrency + order.offerCurrency
+        args[2] = JSON.stringify order
+        # reply asynchronously and in reverse order
+        setTimeout =>
+          @ceOperationHub.send args
+        , timeouts[timeoutIndex++]
+      @request
+      .post('/accounts/Peter/orders/')
+      .set('Accept', 'application/json')
+      .send
+        bidCurrency: 'EUR'
+        offerCurrency: 'BTC'
+        bidPrice: '100'
+        bidAmount: '50'
+      .expect(200)
+      .expect('Content-Type', /json/)
+      .end (error, response) =>
+        order = response.body
+        order.bidCurrency.should.equal 'EUR'
+        order.offerCurrency.should.equal 'BTC'
+        order.bidPrice.should.equal '100'
+        order.bidAmount.should.equal '50'
+        order.id.should.equal 'EURBTC'
+        checklist.check order.id
+      @request
+      .post('/accounts/Peter/orders/')
+      .set('Accept', 'application/json')
+      .send
+        bidCurrency: 'BTC'
+        offerCurrency: 'EUR'
+        bidPrice: '0.01'
+        bidAmount: '5000'
+      .expect(200)
+      .expect('Content-Type', /json/)
+      .end (error, response) =>
+        order = response.body
+        order.bidCurrency.should.equal 'BTC'
+        order.offerCurrency.should.equal 'EUR'
+        order.bidPrice.should.equal '0.01'
+        order.bidAmount.should.equal '5000'
+        order.id.should.equal 'BTCEUR'
+        checklist.check order.id
+      @request
+      .post('/accounts/Peter/orders/')
+      .set('Accept', 'application/json')
+      .send
+        bidCurrency: 'USD'
+        offerCurrency: 'BTC'
+        bidPrice: '150'
+        bidAmount: '75'
+      .expect(200)
+      .expect('Content-Type', /json/)
+      .end (error, response) =>
+        order = response.body
+        order.bidCurrency.should.equal 'USD'
+        order.offerCurrency.should.equal 'BTC'
+        order.bidPrice.should.equal '150'
+        order.bidAmount.should.equal '75'
+        order.id.should.equal 'USDBTC'
+        checklist.check order.id

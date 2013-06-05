@@ -4,7 +4,6 @@ expect = chai.expect
 
 ChildDaemon = require 'child-daemon'
 supertest = require 'supertest'
-zmq = require 'zmq'
 
 describe 'ce-front-end', ->
   it 'should start and listen for engine.io and HTTP connections', (done) ->

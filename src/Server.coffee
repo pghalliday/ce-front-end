@@ -8,7 +8,7 @@ module.exports = class Server
     @connections = []
     @expressServer = express()
     @httpServer = http.createServer @expressServer
-    @ceOperationHub = zmq.socket 'req'
+    @ceOperationHub = zmq.socket 'xreq'
 
     @httpServer.on 'connection', (connection) =>
       @connections.push connection
@@ -23,17 +23,17 @@ module.exports = class Server
 
     @expressServer.post '/accounts/:account/orders/', (request, response) =>
       order = request.body
-      order.clientRef = uuid.v1()
       order.account = request.params.account
-      responseHandler = (message) =>
-        orderResponse = JSON.parse message
-        if order.clientRef == orderResponse.clientRef
+      clientRef = uuid.v1()
+      responseHandler = =>
+        args = Array.apply null, arguments
+        if args[0].toString() == clientRef
           @ceOperationHub.removeListener 'message', responseHandler
-          delete orderResponse.clientRef
-          delete orderResponse.account
-          response.send 200, orderResponse
+          order = JSON.parse args[1]
+          delete order.account
+          response.send 200, order
       @ceOperationHub.on 'message', responseHandler
-      @ceOperationHub.send JSON.stringify order
+      @ceOperationHub.send [clientRef, JSON.stringify order]
 
   stop: (callback) =>
     try
