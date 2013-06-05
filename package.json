@@ -35,16 +35,13 @@
     "grunt-contrib-clean": "~0.4.1",
     "travis-cov": "~0.2.4",
     "child-daemon": "0.0.2",
-    "engine.io-client": "~0.6.0",
     "grunt-blanket": "0.0.8",
     "grunt-contrib-copy": "~0.4.1",
     "supertest": "~0.7.0"
   },
   "dependencies": {
-    "engine.io": "~0.6.0",
     "express": "~3.2.5",
     "zmq": "~2.4.0",
-    "node-uuid": "~1.4.0",
-    "passport": "~0.1.17"
+    "node-uuid": "~1.4.0"
   }
 }

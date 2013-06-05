@@ -23,36 +23,32 @@ $ npm start
 - Submit JSON operations via REST API
   - Forward operations to ce-operation-hub
   - `POST`
-    - `/accounts/[account]/orders/[bid-currency]/[offer-currency]/`
-    - `/accounts/[account]/withdrawals/[currency]/`
+    - `/accounts/[account]/orders/`
+    - `/accounts/[account]/withdrawals/`
   - `DELETE`
-    - `/accounts/[account]/orders/[bid-currency]/[offer-currency]/[id]`
+    - `/accounts/[account]/orders/[id]`
 - Query order book state via REST API
   - `GET`
     - `/orders/[bid-currency]/[offer-currency]/`
-- Query trade history via REST API
+- Query delta history via REST API
   - `GET`
-    - `/trades/[bid-currency]/[offer-currency]/`
-- Query order book deltas via REST API
-  - `GET`
-    - `/deltas/[bid-currency]/[offer-currency]/`
-- Stream trades over engine.io socket
-  - send trades with sequence IDs so that a client can detect if any have been missed
-  - accept a last known sequence ID parameter and flush trades after that ID to present so that disconnected clients can catch up
-  - forward trades from ce-trade-log
-  - `/trades/[bid-currency]/[offer-currency]/`
-- Stream order book changes over engine.io socket
-  - send order book deltas with sequence IDs so that a client can detect if any have been missed
-  - accept a last known sequence ID parameter and flush order book deltas after that ID to present so that disconnected clients can catch up
-  - forward order book deltas from ce-order-log
-  - `/deltas/[bid-currency]/[offer-currency]/` 
+    - `/deltas/`
+  - Deltas include
+    - trades
+    - addition, update or removal of orders
+  - Deltas should have a sequence ID and this interface should accept a last sequence ID parameter to send deltas after that sequence ID
+  - Should be able to specify (default to include nothing)
+    - list of bid currencies to include
+    - list of order currencies to include
+    - include trades
+    - include order book changes
 - Query account information via REST API
   - `GET`
-    - `/accounts/[account]/balances/[currency]/`
-    - `/accounts/[account]/orders/[bid-currency]/[offer-currency]/`
-    - `/accounts/[account]/trades/[bid-currency]/[offer-currency]/`
-    - `/accounts/[account]/withdrawals/[currency]/`
-    - `/accounts/[account]/deposits/[currency]/`
+    - `/accounts/[account]/balances/`
+    - `/accounts/[account]/orders/`
+    - `/accounts/[account]/trades/`
+    - `/accounts/[account]/withdrawals/`
+    - `/accounts/[account]/deposits/`
     - (??) `/accounts/[account]/operations/`
 - Account creation via REST API
   - `POST`

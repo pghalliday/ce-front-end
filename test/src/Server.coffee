@@ -4,9 +4,9 @@ expect = chai.expect
 
 Server = require '../../src/Server'
 
-EngineIOClient = require 'engine.io-client'
 supertest = require 'supertest'
 zmq = require 'zmq'
+uuid = require 'node-uuid'
 
 describe 'Server', ->
   describe '#stop', ->
@@ -44,25 +44,40 @@ describe 'Server', ->
         @ceOperationHub.close()
         done error
 
-    it 'should listen for engine.io connections on the specified port', (done) ->
-      socket = EngineIOClient 'ws://localhost:8000'
-      socket.on 'open', ->
-        done()
-
     it 'should listen for HTTP connections on the specified port', (done) ->
       @request
       .get('/')
       .expect(200)
       .expect 'hello', done
 
-    it 'should forward messages from the engine.io interface to the configured ce-operation-hub 0MQ socket', (done) ->
+    it 'should accept orders posted to /accounts/[account]/orders/ and forward them to the ce-operation-hub', (done) ->
+      id = uuid.v1()
       @ceOperationHub.on 'message', (message) =>
-        @ceOperationHub.send message + ', yourself'
-      socket = EngineIOClient 'ws://localhost:8000'
-      socket.on 'open', ->
-        socket.send 'hello'
-      socket.on 'message', (message) ->
-        message.should.equal 'hello, yourself'
+        order = JSON.parse message
+        order.bidCurrency.should.equal 'EUR'
+        order.orderCurrency.should.equal 'BTC'
+        order.bidPrice.should.equal '100'
+        order.bidAmount.should.equal '50'
+        order.account.should.equal 'Peter'
+        order.id = id
+        @ceOperationHub.send JSON.stringify order
+      @request
+      .post('/accounts/Peter/orders/')
+      .set('Accept', 'application/json')
+      .send
+        bidCurrency: 'EUR'
+        orderCurrency: 'BTC'
+        bidPrice: '100'
+        bidAmount: '50'
+      .expect(200)
+      .expect('Content-Type', /json/)
+      .end (error, response) =>
+        order = response.body
+        order.bidCurrency.should.equal 'EUR'
+        order.orderCurrency.should.equal 'BTC'
+        order.bidPrice.should.equal '100'
+        order.bidAmount.should.equal '50'
+        order.id.should.equal id
         done()
 
 

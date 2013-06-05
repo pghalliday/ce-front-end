@@ -3,7 +3,6 @@ chai.should()
 expect = chai.expect
 
 ChildDaemon = require 'child-daemon'
-EngineIOClient = require 'engine.io-client'
 supertest = require 'supertest'
 zmq = require 'zmq'
 
@@ -12,12 +11,10 @@ describe 'ce-front-end', ->
     childDaemon = new ChildDaemon 'node', ['lib/src/index.js'], new RegExp 'ce-front-end started'
     childDaemon.start (error, matched) ->
       expect(error).to.not.be.ok
-      socket = EngineIOClient 'ws://localhost:3000'
-      socket.on 'open', ->
-        supertest('http://localhost:3000')
-        .get('/')
-        .expect(200)
-        .expect 'hello', ->
-          childDaemon.stop (error) ->
-            expect(error).to.not.be.ok
-            done()
+      supertest('http://localhost:3000')
+      .get('/')
+      .expect(200)
+      .expect 'hello', ->
+        childDaemon.stop (error) ->
+          expect(error).to.not.be.ok
+          done()
