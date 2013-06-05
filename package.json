@@ -38,7 +38,7 @@
     "engine.io-client": "~0.6.0",
     "grunt-blanket": "0.0.8",
     "grunt-contrib-copy": "~0.4.1",
-    "supertest": "~0.6.0"
+    "supertest": "~0.7.0"
   },
   "dependencies": {
     "engine.io": "~0.6.0",
