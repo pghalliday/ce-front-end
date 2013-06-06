@@ -62,7 +62,7 @@ $ npm start
   - Authenticate `/accounts/[account]/` interfaces
 
 ## Contributing
-In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using: 
+In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Test your code using: 
 
 ```
 $ npm test
@@ -81,13 +81,6 @@ The cookbook used by vagrant is located in a git submodule so you will have to i
 ```
 $ git submodule init
 $ git submodule update
-```
-
-### Workaround for firewalls that block default git:// port
-As `engine.io-client` has a dependency on a `git://github.com/` url based module `npm install` will fail if the default port for `git://` urls is blocked by a firewall. These urls can be rewritten to `https://github.com/` with this git configuration change
-
-```
-$ git config --global url.https://github.com/.insteadOf git://github.com/
 ```
 
 ## License

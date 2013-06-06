@@ -24,10 +24,9 @@ Vagrant.configure("2") do |config|
       ]
     end
 
-    # set up front-end server
     node.vm.provision :chef_solo do |chef|
       chef.json = {
-        "CeFrontEnd" => {
+        "ce_front_end" => {
           "installDirectory" => "/vagrant"
         }
       }

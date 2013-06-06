@@ -25,7 +25,6 @@
   "author": "Peter Halliday",
   "license": "MIT",
   "readmeFilename": "README.md",
-  "gitHead": "688c8e532b714ba50df6e7af21ad7d7253cfe06b",
   "devDependencies": {
     "grunt-cli": "~0.1.9",
     "grunt": "~0.4.1",
