@@ -27,22 +27,12 @@ Vagrant.configure("2") do |config|
     # set up front-end server
     node.vm.provision :chef_solo do |chef|
       chef.json = {
-        "nodejs" => {
-          "install_method" => "source",
-          "version" => "0.10.9"
-        },
-        "git" => {
-          "version" => "1.8.3"
-        },
-        "zeromq" => {
-          "version" => "3.2.3",
-          "url" => "http://download.zeromq.org"
+        "CeFrontEnd" => {
+          "installDirectory" => "/vagrant"
         }
       }
       chef.run_list = [
-        "recipe[nodejs]",
-        "recipe[git]",
-        "recipe[zeromq]"
+        "recipe[ce-front-end]"
       ]
     end
   end

@@ -76,6 +76,13 @@ $ vagrant plugin install vagrant-omnibus
 $ vagrant plugin install vagrant-berkshelf
 ```
 
+The cookbook used by vagrant is located in a git submodule so you will have to intialise that after cloning
+
+```
+$ git submodule init
+$ git submodule update
+```
+
 ### Workaround for firewalls that block default git:// port
 As `engine.io-client` has a dependency on a `git://github.com/` url based module `npm install` will fail if the default port for `git://` urls is blocked by a firewall. These urls can be rewritten to `https://github.com/` with this git configuration change
 
