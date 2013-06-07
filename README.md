@@ -12,11 +12,20 @@ Front end implementation for currency exchange service.
 - Accepts engine.io connections
 - Connects to a ce-operation-hub instance using 0MQ
 
-## Starting the server
+## Starting and stopping the server
+
+Forever is used to keep the server running as a daemon and can be called through npm as follows
 
 ```
 $ npm start
+$ npm stop
 ```
+
+Output will be logged to the following files
+
+- `~/.forever/forever.log` Forever output
+- `./out.log` stdout
+- `./err.log` stderr
 
 ## Roadmap
 

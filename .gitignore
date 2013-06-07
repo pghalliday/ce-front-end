@@ -4,3 +4,6 @@ Berksfile.lock
 lib
 lib-cov
 coverage.html
+forever.log
+out.log
+err.log

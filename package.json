@@ -2,11 +2,10 @@
   "name": "ce-front-end",
   "version": "0.0.0",
   "description": "Front end implementation for currency exchange service",
-  "main": "lib/src/index.js",
   "scripts": {
-    "prepublish": "grunt build",
-    "prestart": "grunt build",
-    "start": "node lib/src/index.js",
+    "prestart": "npm test",
+    "start": "forever start -a -l ./forever.log -o ./out.log -e ./err.log  lib/src/index.js",
+    "stop": "forever stop lib/src/index.js",
     "test": "grunt",
     "travis-cov": {
       "threshold": 100
@@ -42,6 +41,7 @@
   "dependencies": {
     "express": "~3.2.5",
     "zmq": "~2.4.0",
-    "node-uuid": "~1.4.0"
+    "node-uuid": "~1.4.0",
+    "forever": "~0.10.8"
   }
 }
