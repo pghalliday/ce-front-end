@@ -53,7 +53,7 @@ describe 'Server', ->
       .expect('Content-Type', /html/)
       .expect 'hello', done
 
-    it 'should accept orders posted to /accounts/[account]/orders/ and forward them to the ce-operation-hub', (done) ->
+    it 'should accept orders posted to /orders/[account]/ and forward them to the ce-operation-hub', (done) ->
       id = uuid.v1()
       @ceOperationHub.on 'message', =>
         args = Array.apply null, arguments
@@ -85,7 +85,7 @@ describe 'Server', ->
         order.id.should.equal id
         done()
 
-    it 'should accept multiple orders posted simultaneously to /accounts/[account]/orders/ and forward them to the ce-operation-hub', (done) ->
+    it 'should accept multiple orders posted simultaneously to /orders/[account]/ and forward them to the ce-operation-hub', (done) ->
       timeouts = [1000, 500, 0]
       timeoutIndex = 0
       checklist = new Checklist [
