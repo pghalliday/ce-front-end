@@ -29,7 +29,7 @@ describe 'ce-front-end', ->
       childDaemon.start (error, matched) =>
         expect(error).to.not.be.ok
         supertest('http://localhost:3001')
-        .post('/accounts/Peter/orders/')
+        .post('/orders/Peter/')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'EUR'
@@ -57,7 +57,7 @@ describe 'ce-front-end', ->
       childDaemon.start (error, matched) =>
         expect(error).to.not.be.ok
         supertest('http://localhost:3002')
-        .post('/accounts/Peter/orders/')
+        .post('/orders/Peter/')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'EUR'
@@ -85,7 +85,7 @@ describe 'ce-front-end', ->
       childDaemon.start (error, matched) =>
         expect(error).to.not.be.ok
         supertest('http://localhost:3003')
-        .post('/accounts/Peter/orders/')
+        .post('/orders/Peter/')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'EUR'

@@ -67,7 +67,7 @@ describe 'Server', ->
         args[2] = JSON.stringify order
         @ceOperationHub.send args
       @request
-      .post('/accounts/Peter/orders/')
+      .post('/orders/Peter/')
       .set('Accept', 'application/json')
       .send
         bidCurrency: 'EUR'
@@ -103,7 +103,7 @@ describe 'Server', ->
           @ceOperationHub.send args
         , timeouts[timeoutIndex++]
       @request
-      .post('/accounts/Peter/orders/')
+      .post('/orders/Peter/')
       .set('Accept', 'application/json')
       .send
         bidCurrency: 'EUR'
@@ -121,7 +121,7 @@ describe 'Server', ->
         order.id.should.equal 'EURBTC'
         checklist.check order.id
       @request
-      .post('/accounts/Peter/orders/')
+      .post('/orders/Peter/')
       .set('Accept', 'application/json')
       .send
         bidCurrency: 'BTC'
@@ -139,7 +139,7 @@ describe 'Server', ->
         order.id.should.equal 'BTCEUR'
         checklist.check order.id
       @request
-      .post('/accounts/Peter/orders/')
+      .post('/orders/Peter/')
       .set('Accept', 'application/json')
       .send
         bidCurrency: 'USD'

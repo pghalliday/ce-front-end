@@ -21,7 +21,7 @@ module.exports = class Server
     @expressServer.get '/', (request, response) =>
       response.send 200, 'hello'
 
-    @expressServer.post '/accounts/:account/orders/', (request, response) =>
+    @expressServer.post '/orders/:account/', (request, response) =>
       order = request.body
       order.account = request.params.account
       clientRef = uuid.v1()
