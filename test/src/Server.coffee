@@ -53,6 +53,33 @@ describe 'Server', ->
       .expect('Content-Type', /html/)
       .expect 'hello', done
 
+    it 'should accept deposits posted to /deposits/[account]/ and forward them to the ce-operation-hub', (done) ->
+      id = uuid.v1()
+      @ceOperationHub.on 'message', =>
+        args = Array.apply null, arguments
+        deposit = JSON.parse args[2]
+        deposit.currency.should.equal 'EUR'
+        deposit.amount.should.equal '50'
+        deposit.account.should.equal 'Peter'
+        deposit.id = id
+        args[2] = JSON.stringify deposit
+        @ceOperationHub.send args
+      @request
+      .post('/deposits/Peter/')
+      .set('Accept', 'application/json')
+      .send
+        currency: 'EUR'
+        amount: '50'
+      .expect(200)
+      .expect('Content-Type', /json/)
+      .end (error, response) =>
+        expect(error).to.not.be.ok
+        deposit = response.body
+        deposit.currency.should.equal 'EUR'
+        deposit.amount.should.equal '50'
+        deposit.id.should.equal id
+        done()
+
     it 'should accept orders posted to /orders/[account]/ and forward them to the ce-operation-hub', (done) ->
       id = uuid.v1()
       @ceOperationHub.on 'message', =>
@@ -77,6 +104,7 @@ describe 'Server', ->
       .expect(200)
       .expect('Content-Type', /json/)
       .end (error, response) =>
+        expect(error).to.not.be.ok
         order = response.body
         order.bidCurrency.should.equal 'EUR'
         order.offerCurrency.should.equal 'BTC'
@@ -113,6 +141,7 @@ describe 'Server', ->
       .expect(200)
       .expect('Content-Type', /json/)
       .end (error, response) =>
+        expect(error).to.not.be.ok
         order = response.body
         order.bidCurrency.should.equal 'EUR'
         order.offerCurrency.should.equal 'BTC'
@@ -131,6 +160,7 @@ describe 'Server', ->
       .expect(200)
       .expect('Content-Type', /json/)
       .end (error, response) =>
+        expect(error).to.not.be.ok
         order = response.body
         order.bidCurrency.should.equal 'BTC'
         order.offerCurrency.should.equal 'EUR'
@@ -149,6 +179,7 @@ describe 'Server', ->
       .expect(200)
       .expect('Content-Type', /json/)
       .end (error, response) =>
+        expect(error).to.not.be.ok
         order = response.body
         order.bidCurrency.should.equal 'USD'
         order.offerCurrency.should.equal 'BTC'

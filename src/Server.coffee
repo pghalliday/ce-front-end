@@ -35,6 +35,20 @@ module.exports = class Server
       @ceOperationHub.on 'message', responseHandler
       @ceOperationHub.send [clientRef, JSON.stringify order]
 
+    @expressServer.post '/deposits/:account/', (request, response) =>
+      deposit = request.body
+      deposit.account = request.params.account
+      clientRef = uuid.v1()
+      responseHandler = =>
+        args = Array.apply null, arguments
+        if args[0].toString() == clientRef
+          @ceOperationHub.removeListener 'message', responseHandler
+          deposit = JSON.parse args[1]
+          delete deposit.account
+          response.send 200, deposit
+      @ceOperationHub.on 'message', responseHandler
+      @ceOperationHub.send [clientRef, JSON.stringify deposit]
+
   stop: (callback) =>
     try
       @connections.forEach (connection) =>
