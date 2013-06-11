@@ -32,13 +32,14 @@ Output will be logged to the following files
 - Submit JSON operations via REST API
   - Forward operations to ce-operation-hub
   - `POST`
-    - `/accounts/[account]/orders/`
-    - `/accounts/[account]/withdrawals/`
+    - `/deposits/[account]/`
+    - `/orders/[account]/`
+    - `/withdrawals/[account]/`
   - `DELETE`
-    - `/accounts/[account]/orders/[id]`
+    - `/orders/[account]/[id]`
 - Query order book state via REST API
   - `GET`
-    - `/orders/[bid-currency]/[offer-currency]/`
+    - `/books/[bid-currency]/[offer-currency]/`
 - Query delta history via REST API
   - `GET`
     - `/deltas/`
@@ -53,12 +54,12 @@ Output will be logged to the following files
     - include order book changes
 - Query account information via REST API
   - `GET`
-    - `/accounts/[account]/balances/`
-    - `/accounts/[account]/orders/`
-    - `/accounts/[account]/trades/`
-    - `/accounts/[account]/withdrawals/`
-    - `/accounts/[account]/deposits/`
-    - (??) `/accounts/[account]/operations/`
+    - `/balances/[account]/`
+    - `/orders/[account]/`
+    - `/trades/[account]/`
+    - `/withdrawals/[account]/`
+    - `/deposits/[account]/`
+    - (??) `/operations/[account]/`
 - Account creation via REST API
   - `POST`
     - `/accounts/`
@@ -68,7 +69,22 @@ Output will be logged to the following files
 - Authentication
   - local authentication
   - 2 factor authentication (TOTP)
-  - Authenticate `/accounts/[account]/` interfaces
+  - admin authenticated
+    - `POST`
+      - `/deposits/[account]/`
+  - user authenticated
+    - `POST`
+      - `/orders/[account]/`
+      - `/withdrawals/[account]/`
+    - `DELETE`
+      - `/orders/[account]/[id]`
+    - `GET`
+      - `/balances/[account]/`
+      - `/orders/[account]/`
+      - `/trades/[account]/`
+      - `/withdrawals/[account]/`
+      - `/deposits/[account]/`
+      - (??) `/operations/[account]/`
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Test your code using: 
