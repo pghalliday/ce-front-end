@@ -6,12 +6,6 @@ ce-front-end
 
 Front end implementation for currency exchange service.
 
-## Features
-
-- Accepts HTTP connections
-- Accepts engine.io connections
-- Connects to a ce-operation-hub instance using 0MQ
-
 ## Starting and stopping the server
 
 Forever is used to keep the server running as a daemon and can be called through npm as follows
@@ -27,64 +21,146 @@ Output will be logged to the following files
 - `./out.log` stdout
 - `./err.log` stderr
 
+## Configuration
+
+
+configuration should be placed in a file called `config.json` in the root of the project
+
+```javascript
+{
+  // Listens for operations and queries over HTTP on the configured `port`
+  "port": 3000,
+  // Forwards operations to the configured `ce-operation-hub` using 0MQ `XREQ` socket
+  "ce-operation-hub": "tcp://ce-operation-hub:4000"
+}
+```
+
+## REST API
+
+#### `POST /deposits/[account]/`
+
+Deposit funds into an account
+
+```javascript
+// Send
+{
+  "currency": "EUR",
+  "amount": "5000"
+}
+
+// Receive
+{
+  "currency": "EUR",
+  "amount": "5000",
+  "id": 123456789,
+  "status": "success"
+}
+```
+
+#### `POST /orders/[account]/`
+
+Add an order to a book
+
+```javascript
+// Send
+{
+  "bidCurrency": "BTC",
+  "offerCurrency": "EUR",
+  "bidPrice": "100",
+  "bidAmount": "50"
+}
+
+// Receive
+{
+  "bidCurrency": "BTC",
+  "offerCurrency": "EUR",
+  "bidPrice": "100",
+  "bidAmount": "50",
+  "id": 123456789,
+  "status": "success"
+}
+```
+
 ## Roadmap
 
-- Submit JSON operations via REST API
-  - Forward operations to ce-operation-hub
-  - `POST`
-    - `/deposits/[account]/`
-    - `/orders/[account]/`
-    - `/withdrawals/[account]/`
-  - `DELETE`
-    - `/orders/[account]/[id]`
-- Query order book state via REST API
-  - `GET`
-    - `/books/[bid-currency]/[offer-currency]/`
-- Query delta history via REST API
-  - `GET`
-    - `/deltas/`
-  - Deltas include
-    - trades
-    - addition, update or removal of orders
-  - Deltas should have a sequence ID and this interface should accept a last sequence ID parameter to send deltas after that sequence ID
-  - Should be able to specify (default to include nothing)
-    - list of bid currencies to include
-    - list of order currencies to include
-    - include trades
-    - include order book changes
-- Query account information via REST API
-  - `GET`
-    - `/balances/[account]/`
-    - `/orders/[account]/`
-    - `/trades/[account]/`
-    - `/withdrawals/[account]/`
-    - `/deposits/[account]/`
-    - (??) `/operations/[account]/`
-- Account creation via REST API
-  - `POST`
-    - `/accounts/`
-- Account updates via REST API
-  - `PUT`
-    - `/accounts/[account]`
-- Authentication
-  - local authentication
-  - 2 factor authentication (TOTP)
-  - admin authenticated
-    - `POST`
-      - `/deposits/[account]/`
-  - user authenticated
-    - `POST`
-      - `/orders/[account]/`
-      - `/withdrawals/[account]/`
-    - `DELETE`
-      - `/orders/[account]/[id]`
-    - `GET`
-      - `/balances/[account]/`
-      - `/orders/[account]/`
-      - `/trades/[account]/`
-      - `/withdrawals/[account]/`
-      - `/deposits/[account]/`
-      - (??) `/operations/[account]/`
+### REST API
+
+#### `POST /withdrawals/[account]/`
+
+Withdraw funds
+
+#### `DELETE /orders/[account]/[id]`
+
+Cancel an order
+
+#### `GET /books/[bid-currency]/[offer-currency]/`
+
+Query order book state
+
+#### `GET /deltas/`
+
+Query delta history including
+
+- Deltas include
+  - trades
+  - addition, update or removal of orders
+- Deltas should have a sequence ID and this interface should accept a last sequence ID parameter to send deltas after that sequence ID
+- Should be able to specify (default to include nothing)
+  - list of bid currencies to include
+  - list of order currencies to include
+  - include trades
+  - include order book changes
+
+#### `GET /balances/[account]/[currency]`
+
+Query the account balance for a currency
+
+#### `GET /orders/[account]/`
+
+Query the account outstanding orders
+
+#### `GET /trades/[account]/`
+
+Query the account trade history
+
+#### `GET /withdrawals/[account]/`
+
+Query the account withdrawal history
+
+#### `GET /deposits/[account]/`
+
+Query the accoutn deposit history
+
+#### `POST /accounts/`
+
+Create an account
+
+#### `PUT /accounts/[account]`
+
+Update account details
+
+### Validation
+
+All operations and queries should be validated before forwarding
+
+- Account valid?
+- Fields valid?
+
+### Authentication
+
+- local authentication
+- 2 factor authentication (TOTP)
+- admin authenticated
+  - `POST /deposits/[account]/`
+- user authenticated
+  - `POST /orders/[account]/`
+  - `POST /withdrawals/[account]/`
+  - `DELETE /orders/[account]/[id]`
+  - `GET /balances/[account]/`
+  - `GET /orders/[account]/`
+  - `GET /trades/[account]/`
+  - `GET /withdrawals/[account]/`
+  - `GET /deposits/[account]/`
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Test your code using: 
@@ -109,5 +185,5 @@ $ git submodule update
 ```
 
 ## License
-Copyright (c) 2013 Peter Halliday  
+Copyright &copy; 2013 Peter Halliday  
 Licensed under the MIT license.
