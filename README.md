@@ -48,7 +48,7 @@ Deposit funds into an account
   "amount": "5000"
 }
 
-// Receive
+// Response
 {
   "currency": "EUR",
   "amount": "5000",
@@ -70,7 +70,7 @@ Add an order to a book
   "bidAmount": "50"
 }
 
-// Receive
+// Response
 {
   "bidCurrency": "BTC",
   "offerCurrency": "EUR",
@@ -84,6 +84,18 @@ Add an order to a book
 ## Roadmap
 
 ### REST API
+
+#### `GET /balances/[account]/`
+
+Query the account balances
+
+```javascript
+// Response
+{
+  "EUR": "5000",
+  "BTC": "50"
+}
+```
 
 #### `POST /withdrawals/[account]/`
 
@@ -110,10 +122,6 @@ Query delta history including
   - list of order currencies to include
   - include trades
   - include order book changes
-
-#### `GET /balances/[account]/[currency]`
-
-Query the account balance for a currency
 
 #### `GET /orders/[account]/`
 
