@@ -9,6 +9,37 @@ module.exports = class Server
     @expressServer = express()
     @httpServer = http.createServer @expressServer
     @ceOperationHub = zmq.socket 'xreq'
+    @ceDeltaHubSubscriber = zmq.socket 'sub'
+    @ceDeltaHubSubscriber.subscribe ''
+    @ceDeltaHubXRequest = zmq.socket 'xreq'
+    @increases = []
+
+    increaseBalance = (increase) =>
+      if increase.id == @state.nextId
+        @state.nextId++
+        account = @state.accounts[increase.account]
+        if !account
+          @state.accounts[increase.account] = account = 
+            balances: Object.create null
+        balances = account.balances
+        if !balances[increase.currency]
+          balances[increase.currency] = '0'
+        balances[increase.currency] = (parseFloat(balances[increase.currency]) + parseFloat(increase.amount)) + ''
+
+    @ceDeltaHubSubscriber.on 'message', (message) =>
+      increase = JSON.parse message
+      if @state
+        increaseBalance increase
+      else
+        @increases.push increase
+
+    @ceDeltaHubXRequest.on 'message', (message) =>
+      firstState = !@state
+      @state = JSON.parse message
+      @increases.forEach (increase) =>
+        increaseBalance increase
+      if firstState
+        @httpServer.listen @options.port, @startCallback
 
     @httpServer.on 'connection', (connection) =>
       @connections.push connection
@@ -20,6 +51,9 @@ module.exports = class Server
 
     @expressServer.get '/', (request, response) =>
       response.send 200, 'hello'
+
+    @expressServer.get '/balances/:account/', (request, response) =>
+      response.send 200, @state.accounts[request.params.account].balances
 
     @expressServer.post '/orders/:account/', (request, response) =>
       order = request.body
@@ -60,5 +94,8 @@ module.exports = class Server
       callback error
 
   start: (callback) =>
-    @ceOperationHub.connect @options.ceOperationHub
-    @httpServer.listen @options.port, callback
+    @startCallback = callback
+    @ceOperationHub.connect 'tcp://' + @options.ceOperationHub.host + ':' + @options.ceOperationHub.port
+    @ceDeltaHubSubscriber.connect 'tcp://' + @options.ceDeltaHub.host + ':' + @options.ceDeltaHub.subscriberPort
+    @ceDeltaHubXRequest.connect 'tcp://' + @options.ceDeltaHub.host + ':' + @options.ceDeltaHub.xRequestPort
+    @ceDeltaHubXRequest.send ''

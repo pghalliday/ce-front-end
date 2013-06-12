@@ -13,9 +13,19 @@ configuration should be placed in a file called `config.json` in the root of the
 ```javascript
 {
   // Listens for operations and queries over HTTP on the configured `port`
-  "port": 3000,
+  "port": 8000,
   // Forwards operations to the configured `ce-operation-hub` using 0MQ `XREQ` socket
-  "ce-operation-hub": "tcp://ce-operation-hub:4000"
+  "ce-operation-hub": {
+    "host": "localhost",
+    "port": 8001
+  },
+  // Receives market deltas from the configured `ce-delta-hub` using 0MQ `XREQ` socket
+  // for the initial state and `SUB` socket for subsequent deltas
+  "ce-delta-hub": {
+    "host": "localhost",
+    "subscriber-port": 8002,
+    "xrequest-port": 8003
+  }
 }
 ```
 
@@ -35,6 +45,18 @@ Output will be logged to the following files
 - `./err.log` stderr
 
 ## REST API
+
+#### `GET /balances/[account]/`
+
+Query an account's balances
+
+```javascript
+// Response
+{
+  "EUR": "5000",
+  "BTC": "50"
+}
+```
 
 #### `POST /deposits/[account]/`
 
@@ -84,18 +106,6 @@ Add an order to a book
 
 ### REST API
 
-#### `GET /balances/[account]/`
-
-Query the account balances
-
-```javascript
-// Response
-{
-  "EUR": "5000",
-  "BTC": "50"
-}
-```
-
 #### `POST /withdrawals/[account]/`
 
 Withdraw funds
@@ -136,7 +146,7 @@ Query the account withdrawal history
 
 #### `GET /deposits/[account]/`
 
-Query the accoutn deposit history
+Query the account deposit history
 
 #### `POST /accounts/`
 

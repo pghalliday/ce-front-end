@@ -1,4 +1,12 @@
 {
-  "port": 3002,
-  "ce-operation-hub": "tcp://127.0.0.1:4002"
+  "port": 8000,
+  "ce-operation-hub": {
+    "host": "localhost",
+    "port": 8001
+  },
+  "ce-delta-hub": {
+    "host": "localhost",
+    "subscriber-port": 8002,
+    "xrequest-port": 8003
+  }
 }
