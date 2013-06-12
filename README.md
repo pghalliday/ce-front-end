@@ -6,6 +6,19 @@ ce-front-end
 
 Front end implementation for currency exchange service.
 
+## Configuration
+
+configuration should be placed in a file called `config.json` in the root of the project
+
+```javascript
+{
+  // Listens for operations and queries over HTTP on the configured `port`
+  "port": 3000,
+  // Forwards operations to the configured `ce-operation-hub` using 0MQ `XREQ` socket
+  "ce-operation-hub": "tcp://ce-operation-hub:4000"
+}
+```
+
 ## Starting and stopping the server
 
 Forever is used to keep the server running as a daemon and can be called through npm as follows
@@ -20,20 +33,6 @@ Output will be logged to the following files
 - `~/.forever/forever.log` Forever output
 - `./out.log` stdout
 - `./err.log` stderr
-
-## Configuration
-
-
-configuration should be placed in a file called `config.json` in the root of the project
-
-```javascript
-{
-  // Listens for operations and queries over HTTP on the configured `port`
-  "port": 3000,
-  // Forwards operations to the configured `ce-operation-hub` using 0MQ `XREQ` socket
-  "ce-operation-hub": "tcp://ce-operation-hub:4000"
-}
-```
 
 ## REST API
 
@@ -111,7 +110,7 @@ Query order book state
 
 #### `GET /deltas/`
 
-Query delta history including
+Query delta history
 
 - Deltas include
   - trades
