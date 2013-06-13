@@ -85,6 +85,8 @@ module.exports = class Server
         connection.end()
       @httpServer.close =>
         @ceOperationHub.close()
+        @ceDeltaHubSubscriber.close()
+        @ceDeltaHubXRequest.close()
         callback()
     catch error
       callback error

@@ -140,8 +140,8 @@ describe 'Server', ->
             account: 'Tom'
             currency: 'BTC'
             amount: '2500'
+          checklist.check 'deltas sent'
         , 250
-        checklist.check 'deltas sent'
       # send some deltas before the server starts
       increaseBalance
         account: 'Peter'
