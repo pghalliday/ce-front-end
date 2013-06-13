@@ -185,50 +185,61 @@ describe 'Server', ->
           done()
 
       it 'should return the account balances received from the ce-delta-hub', (done) ->
-        checklist = new Checklist [
-          'Peter'
-          'Paul'
-          'Tom'
-        ], done
+        checks = []
+        for id of state.accounts
+          checks.push id
+        checklist = new Checklist checks, done
+        # can't use for .. in here as it doesn't play nice with closures
+        Object.keys(state.accounts).forEach (id) =>
+          account = state.accounts[id]
+          request
+          .get('/balances/' + id + '/')
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect('Content-Type', /json/)
+          .end (error, response) =>
+            expect(error).to.not.be.ok
+            balances = response.body
+            for currency, amount of balances
+              amount.should.equal account.balances[currency]
+            for currency, amount of account.balances
+              amount.should.equal balances[currency]
+            checklist.check id
+
+    describe 'GET /balances/[account]/[currency]', ->
+      it 'should return 0 for uninitialised balances', (done) ->
         request
-        .get('/balances/Peter/')
+        .get('/balances/Unknown/EUR')
         .set('Accept', 'application/json')
         .expect(200)
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          balances = response.body
-          for currency, amount of balances
-            amount.should.equal state.accounts['Peter'].balances[currency]
-          for currency, amount of state.accounts['Peter'].balances
-            amount.should.equal balances[currency]
-          checklist.check 'Peter'
-        request
-        .get('/balances/Paul/')
-        .set('Accept', 'application/json')
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          balances = response.body
-          for currency, amount of balances
-            amount.should.equal state.accounts['Paul'].balances[currency]
-          for currency, amount of state.accounts['Paul'].balances
-            amount.should.equal balances[currency]
-          checklist.check 'Paul'
-        request
-        .get('/balances/Tom/')
-        .set('Accept', 'application/json')
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          balances = response.body
-          for currency, amount of balances
-            amount.should.equal state.accounts['Tom'].balances[currency]
-          for currency, amount of state.accounts['Tom'].balances
-            amount.should.equal balances[currency]
-          checklist.check 'Tom'
+          balance = response.body
+          balance.should.equal '0'
+          done()
+
+      it 'should return the account balances received from the ce-delta-hub', (done) ->
+        checks = []
+        for id, account of state.accounts
+          for currency of account.balances
+            checks.push id + currency
+        checklist = new Checklist checks, done
+        # can't use for .. in here as it doesn't play nice with closures
+        Object.keys(state.accounts).forEach (id) =>
+          account = state.accounts[id]
+          Object.keys(account.balances).forEach (currency) =>
+            expectedBalance = account.balances[currency]
+            request
+            .get('/balances/' + id + '/' + currency)
+            .set('Accept', 'application/json')
+            .expect(200)
+            .expect('Content-Type', /json/)
+            .end (error, response) =>
+              expect(error).to.not.be.ok
+              balance = response.body
+              balance.should.equal expectedBalance
+              checklist.check id + currency
 
     describe 'POST /deposits/[account]/', ->
       it 'should accept deposits and forward them to the ce-operation-hub', (done) ->

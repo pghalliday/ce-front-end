@@ -58,6 +58,14 @@ Query an account's balances
 }
 ```
 
+#### `GET /balances/[account]/[currency]`
+
+Query an account's balance in a particular currency
+
+```javascript
+"5000"
+```
+
 #### `POST /deposits/[account]/`
 
 Deposit funds into an account

@@ -46,7 +46,10 @@ module.exports = class Server
       balances = Object.create null
       for currency, balance of @state.getAccount(request.params.account).balances
         balances[currency] = balance.amount.toString()
-      response.send 200, balances
+      response.json 200, balances
+
+    @expressServer.get '/balances/:account/:currency', (request, response) =>
+      response.json 200, @state.getAccount(request.params.account).getBalance(request.params.currency).getAmount()
 
     @expressServer.post '/orders/:account/', (request, response) =>
       order = request.body
@@ -58,7 +61,7 @@ module.exports = class Server
           @ceOperationHub.removeListener 'message', responseHandler
           order = JSON.parse args[1]
           delete order.account
-          response.send 200, order
+          response.json 200, order
       @ceOperationHub.on 'message', responseHandler
       @ceOperationHub.send [clientRef, JSON.stringify order]
 
@@ -72,7 +75,7 @@ module.exports = class Server
           @ceOperationHub.removeListener 'message', responseHandler
           deposit = JSON.parse args[1]
           delete deposit.account
-          response.send 200, deposit
+          response.json 200, deposit
       @ceOperationHub.on 'message', responseHandler
       @ceOperationHub.send [clientRef, JSON.stringify deposit]
 
