@@ -4,14 +4,17 @@ module.exports = (grunt) ->
       build: ['lib']
       coverage: ['lib-cov']
     coffee:
-      compile:
+      build:
         expand: true 
         src: ['src/**/*.coffee', 'test/**/*.coffee']
         dest: 'lib'
         ext: '.js'
     copy:
+      build:
+        src: ['thirdparty/**']
+        dest: 'lib/'
       coverage:
-        src: ['lib/test/**']
+        src: ['lib/test/**', 'lib/thirdparty/**']
         dest: 'lib-cov/'
     blanket:
       coverage:
@@ -41,7 +44,8 @@ module.exports = (grunt) ->
 
   grunt.registerTask 'build', [
     'clean:build'
-    'coffee'
+    'copy:build'
+    'coffee:build'
   ]
 
   grunt.registerTask 'coverage', [

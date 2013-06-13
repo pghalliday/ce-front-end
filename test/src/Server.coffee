@@ -172,6 +172,18 @@ describe 'Server', ->
         .expect 'hello', done
 
     describe 'GET /balances/[account]/', ->
+      it 'should return an empty object for unknown accounts', (done) ->
+        request
+        .get('/balances/Unknown/')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          balances = response.body
+          balances.should.deep.equal Object.create null
+          done()
+
       it 'should return the account balances received from the ce-delta-hub', (done) ->
         checklist = new Checklist [
           'Peter'

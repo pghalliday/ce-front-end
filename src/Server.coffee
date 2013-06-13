@@ -3,6 +3,8 @@ express = require 'express'
 zmq = require 'zmq'
 uuid = require 'node-uuid'
 
+State = require './State'
+
 module.exports = class Server
   constructor: (@options) ->
     @connections = []
@@ -14,30 +16,18 @@ module.exports = class Server
     @ceDeltaHubXRequest = zmq.socket 'xreq'
     @increases = []
 
-    increaseBalance = (increase) =>
-      if increase.id == @state.nextId
-        @state.nextId++
-        account = @state.accounts[increase.account]
-        if !account
-          @state.accounts[increase.account] = account = 
-            balances: Object.create null
-        balances = account.balances
-        if !balances[increase.currency]
-          balances[increase.currency] = '0'
-        balances[increase.currency] = (parseFloat(balances[increase.currency]) + parseFloat(increase.amount)) + ''
-
     @ceDeltaHubSubscriber.on 'message', (message) =>
       increase = JSON.parse message
       if @state
-        increaseBalance increase
+        @state.increaseBalance increase
       else
         @increases.push increase
 
     @ceDeltaHubXRequest.on 'message', (message) =>
       firstState = !@state
-      @state = JSON.parse message
+      @state = new State JSON.parse message
       @increases.forEach (increase) =>
-        increaseBalance increase
+        @state.increaseBalance increase
       if firstState
         @httpServer.listen @options.port, @startCallback
 
@@ -53,7 +43,10 @@ module.exports = class Server
       response.send 200, 'hello'
 
     @expressServer.get '/balances/:account/', (request, response) =>
-      response.send 200, @state.accounts[request.params.account].balances
+      balances = Object.create null
+      for currency, balance of @state.getAccount(request.params.account).balances
+        balances[currency] = balance.amount.toString()
+      response.send 200, balances
 
     @expressServer.post '/orders/:account/', (request, response) =>
       order = request.body
