@@ -17,14 +17,14 @@ configuration should be placed in a file called `config.json` in the root of the
   // Forwards operations to the configured `ce-operation-hub` using 0MQ `XREQ` socket
   "ce-operation-hub": {
     "host": "localhost",
-    "port": 8001
+    "submit": 8001
   },
   // Receives market deltas from the configured `ce-delta-hub` using 0MQ `XREQ` socket
   // for the initial state and `SUB` socket for subsequent deltas
   "ce-delta-hub": {
     "host": "localhost",
-    "subscriber-port": 8002,
-    "xrequest-port": 8003
+    "stream": 8002,
+    "state": 8003
   }
 }
 ```

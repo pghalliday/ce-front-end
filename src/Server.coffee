@@ -11,19 +11,20 @@ module.exports = class Server
     @expressServer = express()
     @httpServer = http.createServer @expressServer
     @ceOperationHub = zmq.socket 'xreq'
-    @ceDeltaHubSubscriber = zmq.socket 'sub'
-    @ceDeltaHubSubscriber.subscribe ''
-    @ceDeltaHubXRequest = zmq.socket 'xreq'
+    @ceDeltaHub =
+      stream: zmq.socket 'sub'
+      state: zmq.socket 'xreq'
+    @ceDeltaHub.stream.subscribe ''
     @increases = []
 
-    @ceDeltaHubSubscriber.on 'message', (message) =>
+    @ceDeltaHub.stream.on 'message', (message) =>
       increase = JSON.parse message
       if @state
         @state.increaseBalance increase
       else
         @increases.push increase
 
-    @ceDeltaHubXRequest.on 'message', (message) =>
+    @ceDeltaHub.state.on 'message', (message) =>
       firstState = !@state
       @state = new State JSON.parse message
       @increases.forEach (increase) =>
@@ -85,15 +86,15 @@ module.exports = class Server
         connection.end()
       @httpServer.close =>
         @ceOperationHub.close()
-        @ceDeltaHubSubscriber.close()
-        @ceDeltaHubXRequest.close()
+        @ceDeltaHub.stream.close()
+        @ceDeltaHub.state.close()
         callback()
     catch error
       callback error
 
   start: (callback) =>
     @startCallback = callback
-    @ceOperationHub.connect 'tcp://' + @options.ceOperationHub.host + ':' + @options.ceOperationHub.port
-    @ceDeltaHubSubscriber.connect 'tcp://' + @options.ceDeltaHub.host + ':' + @options.ceDeltaHub.subscriberPort
-    @ceDeltaHubXRequest.connect 'tcp://' + @options.ceDeltaHub.host + ':' + @options.ceDeltaHub.xRequestPort
-    @ceDeltaHubXRequest.send ''
+    @ceOperationHub.connect 'tcp://' + @options['ce-operation-hub'].host + ':' + @options['ce-operation-hub'].submit
+    @ceDeltaHub.stream.connect 'tcp://' + @options['ce-delta-hub'].host + ':' + @options['ce-delta-hub'].stream
+    @ceDeltaHub.state.connect 'tcp://' + @options['ce-delta-hub'].host + ':' + @options['ce-delta-hub'].state
+    @ceDeltaHub.state.send ''

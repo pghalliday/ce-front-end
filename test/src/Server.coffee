@@ -8,11 +8,11 @@ Server = require '../../src/Server'
 supertest = require 'supertest'
 zmq = require 'zmq'
 uuid = require 'node-uuid'
+ports = require '../support/ports'
 
-request = supertest 'http://localhost:8000'
+request = null
 ceOperationHub = null
-ceDeltaHubPublisher = null
-ceDeltaHubXReply = null
+ceDeltaHub = null
 currentDelta = 0
 state = null
 server = null
@@ -28,33 +28,39 @@ increaseBalance = (increase) ->
   balances[increase.currency] = (parseFloat(balances[increase.currency]) + parseFloat(increase.amount)) + ''
   increase.id = currentDelta++
   state.nextId = currentDelta
-  ceDeltaHubPublisher.send JSON.stringify increase  
+  ceDeltaHub.stream.send JSON.stringify increase  
 
 describe 'Server', ->
   beforeEach ->
+    httpPort = ports()
+    request = supertest 'http://localhost:' + httpPort
     ceOperationHub = zmq.socket 'xrep'
-    ceOperationHub.bindSync 'tcp://*:8001'
-    ceDeltaHubPublisher = zmq.socket 'pub'
-    ceDeltaHubPublisher.bindSync 'tcp://*:8002'
-    ceDeltaHubXReply = zmq.socket 'xrep'
-    ceDeltaHubXReply.bindSync 'tcp://*:8003'
+    ceOperationHubSubmitPort = ports()
+    ceOperationHub.bindSync 'tcp://*:' + ceOperationHubSubmitPort
+    ceDeltaHub = 
+      stream: zmq.socket 'pub'
+      state: zmq.socket 'xrep'
+    ceDeltaHubStreamPort = ports()
+    ceDeltaHub.stream.bindSync 'tcp://*:' + ceDeltaHubStreamPort
+    ceDeltaHubStatePort = ports()
+    ceDeltaHub.state.bindSync 'tcp://*:' + ceDeltaHubStatePort
     currentDelta = 0
     state = 
       accounts: Object.create null
     server = new Server
-      port: 8000
-      ceOperationHub:
+      port: httpPort
+      'ce-operation-hub':
         host: 'localhost'
-        port: 8001
-      ceDeltaHub:
+        submit: ceOperationHubSubmitPort
+      'ce-delta-hub':
         host: 'localhost'
-        subscriberPort: 8002
-        xRequestPort: 8003
+        stream: ceDeltaHubStreamPort
+        state: ceDeltaHubStatePort
 
   afterEach ->
     ceOperationHub.close()
-    ceDeltaHubPublisher.close()
-    ceDeltaHubXReply.close()
+    ceDeltaHub.stream.close()
+    ceDeltaHub.state.close()
 
   describe '#stop', ->
     it 'should error if the server has not been started', (done) ->
@@ -64,11 +70,11 @@ describe 'Server', ->
 
   describe '#start', ->
     it 'should start and be stoppable', (done) ->
-      ceDeltaHubXReply.on 'message', =>
+      ceDeltaHub.state.on 'message', =>
         args = Array.apply null, arguments
         # send the state so that the server can finish starting
         args[1] = JSON.stringify state
-        ceDeltaHubXReply.send args
+        ceDeltaHub.state.send args
       server.start (error) ->
         expect(error).to.not.be.ok
         # request with keep alive to test that the server can stop with open connections
@@ -86,7 +92,7 @@ describe 'Server', ->
         'deltas sent'
         'server started'
       ], done
-      ceDeltaHubXReply.on 'message', =>
+      ceDeltaHub.state.on 'message', =>
         args = Array.apply null, arguments
         # publishing some deltas before sending the state
         increaseBalance
@@ -103,7 +109,7 @@ describe 'Server', ->
           amount: '7500'
         # now send the state which should result in the previous deltas being ignored
         args[1] = JSON.stringify state
-        ceDeltaHubXReply.send args
+        ceDeltaHub.state.send args
         # now send some more deltas
         increaseBalance
           account: 'Peter'

@@ -1,12 +1,12 @@
 {
-  "port": 8000,
+  "port": 7000,
   "ce-operation-hub": {
     "host": "localhost",
-    "port": 8001
+    "submit": 7001
   },
   "ce-delta-hub": {
     "host": "localhost",
-    "subscriber-port": 8002,
-    "xrequest-port": 8003
+    "stream": 7002,
+    "state": 7003
   }
 }
