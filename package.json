@@ -8,7 +8,7 @@
     "stop": "forever stop lib/src/index.js",
     "test": "grunt",
     "travis-cov": {
-      "threshold": 99
+      "threshold": 100
     }
   },
   "repository": {
