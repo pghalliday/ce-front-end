@@ -26,11 +26,10 @@ increaseBalance = (increase) ->
   if !balances[increase.currency]
     balances[increase.currency] = '0'
   balances[increase.currency] = (parseFloat(balances[increase.currency]) + parseFloat(increase.amount)) + ''
-  increase.id = currentDelta++
-  state.nextId = currentDelta
   delta = 
-    id: 0
+    id: currentDelta++
     increase: increase
+  state.nextId = currentDelta
   ceDeltaHub.stream.send JSON.stringify delta  
 
 describe 'Server', ->
@@ -170,24 +169,6 @@ describe 'Server', ->
     afterEach (done) ->
       server.stop (error) =>
         done error
-
-    it 'should log unknown deltas', (done) ->
-      delta = 
-        id: 0
-        unknown:
-          account: 'Peter'
-          currency: 'BTC'
-          amount: '50'
-      original = console.error
-      secondMessage = (message) =>
-        message.should.deep.equal delta
-        console.error = original
-        done()
-      firstMessage = (message) =>
-        message.should.equal 'Unknown delta received:'
-        console.error = secondMessage
-      console.error = firstMessage
-      ceDeltaHub.stream.send JSON.stringify delta  
 
     describe 'GET /', ->
       it 'should return the home page', (done) ->

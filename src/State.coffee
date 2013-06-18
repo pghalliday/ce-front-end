@@ -12,7 +12,12 @@ module.exports = class State
   getAccount: (id) =>
     @accounts[id] = @accounts[id] || new Account()
 
-  increaseBalance: (increase) =>
-    if increase.id == @nextId
+  apply: (delta) =>
+    if delta.id == @nextId
       @nextId++
-      @getAccount(increase.account).getBalance(increase.currency).increase increase.amount
+      increase = delta.increase
+      if increase
+        @getAccount(increase.account).getBalance(increase.currency).increase increase.amount
+      else
+        console.error 'Unknown delta received:'
+        console.error delta

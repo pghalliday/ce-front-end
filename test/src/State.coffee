@@ -41,38 +41,61 @@ describe 'State', ->
     state.getAccount('Paul').getBalance('EUR').getAmount().should.equal '2500'
     state.getAccount('Paul').getBalance('BTC').getAmount().should.equal '75'
 
-  describe '#increaseBalance', ->
+  describe '#apply', ->
     it 'should apply deltas with sequential IDs', ->
       state = new State()
-      state.increaseBalance
+      state.apply
         id: 0
-        account: 'Peter'
-        currency: 'EUR'
-        amount: '100'
+        increase:
+          account: 'Peter'
+          currency: 'EUR'
+          amount: '100'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '100'
-      state.increaseBalance
+      state.apply
         id: 1
-        account: 'Peter'
-        currency: 'EUR'
-        amount: '150'
+        increase:
+          account: 'Peter'
+          currency: 'EUR'
+          amount: '150'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '250'
-      state.increaseBalance
+      state.apply
         id: 2
-        account: 'Peter'
-        currency: 'EUR'
-        amount: '50'
+        increase:
+          account: 'Peter'
+          currency: 'EUR'
+          amount: '50'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '300'
 
-    it 'should ignore increases with an ID lower than expected as such an increase will have already been applied', ->
+    it 'should ignore deltas with an ID lower than expected as such a delta will have already been applied', ->
       state = new State
         nextId: 1234567890
         accounts: 
           'Peter':
             balances:
               'EUR': '5000'
-      state.increaseBalance
+      state.apply
         id: 1234567889
-        account: 'Peter'
-        currency: 'EUR'
-        amount: '50'
+        increase:
+          account: 'Peter'
+          currency: 'EUR'
+          amount: '50'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '5000'
+
+    it 'should log unknown deltas', ->
+      state = new State()
+      delta = 
+        id: 0
+        unknown:
+          account: 'Peter'
+          currency: 'BTC'
+          amount: '50'
+      original = console.error
+      secondMessage = (message) =>
+        message.should.deep.equal delta
+        console.error = original
+      firstMessage = (message) =>
+        message.should.equal 'Unknown delta received:'
+        console.error = secondMessage
+      console.error = firstMessage
+      state.apply delta
+

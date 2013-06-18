@@ -15,26 +15,20 @@ module.exports = class Server
       stream: zmq.socket 'sub'
       state: zmq.socket 'xreq'
     @ceDeltaHub.stream.subscribe ''
-    @increases = []
+    @deltas = []
 
     @ceDeltaHub.stream.on 'message', (message) =>
       delta = JSON.parse message
-      increase = delta.increase
-      if increase
-        if @state
-          @state.increaseBalance increase
-        else
-          @increases.push increase
+      if @state
+        @state.apply delta
       else
-        # log unknown deltas
-        console.error 'Unknown delta received:'
-        console.error delta
+        @deltas.push delta
 
     @ceDeltaHub.state.on 'message', (message) =>
       firstState = !@state
       @state = new State JSON.parse message
-      @increases.forEach (increase) =>
-        @state.increaseBalance increase
+      @deltas.forEach (delta) =>
+        @state.apply delta
       if firstState
         @httpServer.listen @options.port, @startCallback
 
