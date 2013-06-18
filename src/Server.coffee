@@ -18,11 +18,17 @@ module.exports = class Server
     @increases = []
 
     @ceDeltaHub.stream.on 'message', (message) =>
-      increase = JSON.parse message
-      if @state
-        @state.increaseBalance increase
+      delta = JSON.parse message
+      increase = delta.increase
+      if increase
+        if @state
+          @state.increaseBalance increase
+        else
+          @increases.push increase
       else
-        @increases.push increase
+        # log unknown deltas
+        console.error 'Unknown delta received:'
+        console.error delta
 
     @ceDeltaHub.state.on 'message', (message) =>
       firstState = !@state
@@ -53,32 +59,30 @@ module.exports = class Server
       response.json 200, @state.getAccount(request.params.account).getBalance(request.params.currency).getAmount()
 
     @expressServer.post '/orders/:account/', (request, response) =>
-      order = request.body
-      order.account = request.params.account
-      clientRef = uuid.v1()
-      responseHandler = =>
-        args = Array.apply null, arguments
-        if args[0].toString() == clientRef
+      frontEndRef = uuid.v1()
+      responseHandler = (ref, message) =>
+        if ref.toString() == frontEndRef
           @ceOperationHub.removeListener 'message', responseHandler
-          order = JSON.parse args[1]
-          delete order.account
-          response.json 200, order
+          operation = JSON.parse message
+          response.json 200, operation
       @ceOperationHub.on 'message', responseHandler
-      @ceOperationHub.send [clientRef, JSON.stringify order]
+      operation = 
+        account: request.params.account
+        order: request.body
+      @ceOperationHub.send [frontEndRef, JSON.stringify operation]
 
     @expressServer.post '/deposits/:account/', (request, response) =>
-      deposit = request.body
-      deposit.account = request.params.account
-      clientRef = uuid.v1()
-      responseHandler = =>
-        args = Array.apply null, arguments
-        if args[0].toString() == clientRef
+      frontEndRef = uuid.v1()
+      responseHandler = (ref, message) =>
+        if ref.toString() == frontEndRef
           @ceOperationHub.removeListener 'message', responseHandler
-          deposit = JSON.parse args[1]
-          delete deposit.account
-          response.json 200, deposit
+          operation = JSON.parse message
+          response.json 200, operation
       @ceOperationHub.on 'message', responseHandler
-      @ceOperationHub.send [clientRef, JSON.stringify deposit]
+      operation = 
+        account: request.params.account
+        deposit: request.body
+      @ceOperationHub.send [frontEndRef, JSON.stringify operation]
 
   stop: (callback) =>
     try

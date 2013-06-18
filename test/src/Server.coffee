@@ -28,7 +28,10 @@ increaseBalance = (increase) ->
   balances[increase.currency] = (parseFloat(balances[increase.currency]) + parseFloat(increase.amount)) + ''
   increase.id = currentDelta++
   state.nextId = currentDelta
-  ceDeltaHub.stream.send JSON.stringify increase  
+  delta = 
+    id: 0
+    increase: increase
+  ceDeltaHub.stream.send JSON.stringify delta  
 
 describe 'Server', ->
   beforeEach ->
@@ -70,11 +73,9 @@ describe 'Server', ->
 
   describe '#start', ->
     it 'should start and be stoppable', (done) ->
-      ceDeltaHub.state.on 'message', =>
-        args = Array.apply null, arguments
+      ceDeltaHub.state.on 'message', (ref) =>
         # send the state so that the server can finish starting
-        args[1] = JSON.stringify state
-        ceDeltaHub.state.send args
+        ceDeltaHub.state.send [ref, JSON.stringify state]
       server.start (error) ->
         expect(error).to.not.be.ok
         # request with keep alive to test that the server can stop with open connections
@@ -92,7 +93,7 @@ describe 'Server', ->
         'deltas sent'
         'server started'
       ], done
-      ceDeltaHub.state.on 'message', =>
+      ceDeltaHub.state.on 'message', (ref) =>
         args = Array.apply null, arguments
         # publishing some deltas before sending the state
         increaseBalance
@@ -107,33 +108,15 @@ describe 'Server', ->
           account: 'Paul'
           currency: 'USD'
           amount: '7500'
-        # now send the state which should result in the previous deltas being ignored
-        args[1] = JSON.stringify state
-        ceDeltaHub.state.send args
-        # now send some more deltas
-        increaseBalance
-          account: 'Peter'
-          currency: 'EUR'
-          amount: '2500'
-        increaseBalance
-          account: 'Peter'
-          currency: 'BTC'
-          amount: '75'
-        increaseBalance
-          account: 'Paul'
-          currency: 'USD'
-          amount: '5000'
-        # send some deltas for an account not in the sent state
-        increaseBalance
-          account: 'Tom'
-          currency: 'BTC'
-          amount: '2500'
-        increaseBalance
-          account: 'Tom'
-          currency: 'EUR'
-          amount: '2500'
-        # wait a bit so that the state has been received then send some more deltas
+        # wait a bit before sending the state to ensure that the previous increases were cached 
         setTimeout =>
+          # send the state now which should result in the previous deltas being ignored
+          ceDeltaHub.state.send [ref, JSON.stringify state]
+          # now send some more deltas
+          increaseBalance
+            account: 'Peter'
+            currency: 'EUR'
+            amount: '2500'
           increaseBalance
             account: 'Peter'
             currency: 'BTC'
@@ -142,11 +125,31 @@ describe 'Server', ->
             account: 'Paul'
             currency: 'USD'
             amount: '5000'
+          # send some deltas for an account not in the sent state
           increaseBalance
             account: 'Tom'
             currency: 'BTC'
             amount: '2500'
-          checklist.check 'deltas sent'
+          increaseBalance
+            account: 'Tom'
+            currency: 'EUR'
+            amount: '2500'
+          # wait a bit so that the state has been received then send some more deltas
+          setTimeout =>
+            increaseBalance
+              account: 'Peter'
+              currency: 'BTC'
+              amount: '75'
+            increaseBalance
+              account: 'Paul'
+              currency: 'USD'
+              amount: '5000'
+            increaseBalance
+              account: 'Tom'
+              currency: 'BTC'
+              amount: '2500'
+            checklist.check 'deltas sent'
+          , 250
         , 250
       # send some deltas before the server starts
       increaseBalance
@@ -167,6 +170,24 @@ describe 'Server', ->
     afterEach (done) ->
       server.stop (error) =>
         done error
+
+    it 'should log unknown deltas', (done) ->
+      delta = 
+        id: 0
+        unknown:
+          account: 'Peter'
+          currency: 'BTC'
+          amount: '50'
+      original = console.error
+      secondMessage = (message) =>
+        message.should.deep.equal delta
+        console.error = original
+        done()
+      firstMessage = (message) =>
+        message.should.equal 'Unknown delta received:'
+        console.error = secondMessage
+      console.error = firstMessage
+      ceDeltaHub.stream.send JSON.stringify delta  
 
     describe 'GET /', ->
       it 'should return the home page', (done) ->
@@ -250,15 +271,14 @@ describe 'Server', ->
     describe 'POST /deposits/[account]/', ->
       it 'should accept deposits and forward them to the ce-operation-hub', (done) ->
         id = uuid.v1()
-        ceOperationHub.on 'message', =>
-          args = Array.apply null, arguments
-          deposit = JSON.parse args[2]
+        ceOperationHub.on 'message', (ref, frontEndRef, message) =>
+          operation = JSON.parse message
+          operation.account.should.equal 'Peter'
+          deposit = operation.deposit
           deposit.currency.should.equal 'EUR'
           deposit.amount.should.equal '50'
-          deposit.account.should.equal 'Peter'
-          deposit.id = id
-          args[2] = JSON.stringify deposit
-          ceOperationHub.send args
+          operation.id = id
+          ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
         request
         .post('/deposits/Peter/')
         .set('Accept', 'application/json')
@@ -269,26 +289,27 @@ describe 'Server', ->
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          deposit = response.body
+          operation = response.body
+          operation.id.should.equal id
+          operation.account.should.equal 'Peter'
+          deposit = operation.deposit
           deposit.currency.should.equal 'EUR'
           deposit.amount.should.equal '50'
-          deposit.id.should.equal id
           done()
 
     describe 'POST /orders/[account]/', ->
       it 'should accept orders and forward them to the ce-operation-hub', (done) ->
         id = uuid.v1()
-        ceOperationHub.on 'message', =>
-          args = Array.apply null, arguments
-          order = JSON.parse args[2]
+        ceOperationHub.on 'message', (ref, frontEndRef, message) =>
+          operation = JSON.parse message
+          operation.account.should.equal 'Peter'
+          order = operation.order
           order.bidCurrency.should.equal 'EUR'
           order.offerCurrency.should.equal 'BTC'
           order.bidPrice.should.equal '100'
           order.bidAmount.should.equal '50'
-          order.account.should.equal 'Peter'
-          order.id = id
-          args[2] = JSON.stringify order
-          ceOperationHub.send args
+          operation.id = id
+          ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
@@ -301,12 +322,14 @@ describe 'Server', ->
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          order = response.body
+          operation = response.body
+          operation.id.should.equal id
+          operation.account.should.equal 'Peter'
+          order = operation.order
           order.bidCurrency.should.equal 'EUR'
           order.offerCurrency.should.equal 'BTC'
           order.bidPrice.should.equal '100'
           order.bidAmount.should.equal '50'
-          order.id.should.equal id
           done()
 
       it 'should accept multiple orders posted simultaneously and forward them to the ce-operation-hub', (done) ->
@@ -317,14 +340,12 @@ describe 'Server', ->
           'BTCEUR'
           'USDBTC'
         ], done
-        ceOperationHub.on 'message', (message) =>
-          args = Array.apply null, arguments
-          order = JSON.parse args[2]
-          order.id = order.bidCurrency + order.offerCurrency
-          args[2] = JSON.stringify order
+        ceOperationHub.on 'message', (ref, frontEndRef, message) =>
+          operation = JSON.parse message
+          operation.id = operation.order.bidCurrency + operation.order.offerCurrency
           # reply asynchronously and in reverse order
           setTimeout =>
-            ceOperationHub.send args
+            ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
           , timeouts[timeoutIndex++]
         request
         .post('/orders/Peter/')
@@ -338,13 +359,15 @@ describe 'Server', ->
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          order = response.body
+          operation = response.body
+          operation.id.should.equal 'EURBTC'
+          operation.account.should.equal 'Peter'
+          order = operation.order
           order.bidCurrency.should.equal 'EUR'
           order.offerCurrency.should.equal 'BTC'
           order.bidPrice.should.equal '100'
           order.bidAmount.should.equal '50'
-          order.id.should.equal 'EURBTC'
-          checklist.check order.id
+          checklist.check operation.id
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
@@ -357,13 +380,15 @@ describe 'Server', ->
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          order = response.body
+          operation = response.body
+          operation.id.should.equal 'BTCEUR'
+          operation.account.should.equal 'Peter'
+          order = operation.order
           order.bidCurrency.should.equal 'BTC'
           order.offerCurrency.should.equal 'EUR'
           order.bidPrice.should.equal '0.01'
           order.bidAmount.should.equal '5000'
-          order.id.should.equal 'BTCEUR'
-          checklist.check order.id
+          checklist.check operation.id
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
@@ -376,10 +401,12 @@ describe 'Server', ->
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          order = response.body
+          operation = response.body
+          operation.id.should.equal 'USDBTC'
+          operation.account.should.equal 'Peter'
+          order = operation.order
           order.bidCurrency.should.equal 'USD'
           order.offerCurrency.should.equal 'BTC'
           order.bidPrice.should.equal '150'
           order.bidAmount.should.equal '75'
-          order.id.should.equal 'USDBTC'
-          checklist.check order.id
+          checklist.check operation.id

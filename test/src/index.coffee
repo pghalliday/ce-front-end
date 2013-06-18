@@ -24,11 +24,9 @@ describe 'ce-front-end', ->
           balances:
             'EUR': '5000'
             'BTC': '50'
-    ceDeltaHub.state.on 'message', =>
-      args = Array.apply null, arguments
+    ceDeltaHub.state.on 'message', (ref) =>
       # send the state so that the server can finish starting
-      args[1] = JSON.stringify state
-      ceDeltaHub.state.send args
+      ceDeltaHub.state.send [ref, JSON.stringify state]
     childDaemon = new ChildDaemon 'node', [
       'lib/src/index.js',
       '--config',

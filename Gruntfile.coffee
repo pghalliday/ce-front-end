@@ -28,7 +28,7 @@ module.exports = (grunt) ->
       report:
         options: 
           reporter: 'html-cov'
-          quiet: true
+          quiet: false
         src: ['lib-cov/lib/test/**/*.js']
         dest: 'coverage.html'
       coverage:
