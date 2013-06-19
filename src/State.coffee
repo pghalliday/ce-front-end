@@ -15,9 +15,15 @@ module.exports = class State
   apply: (delta) =>
     if delta.id == @nextId
       @nextId++
-      increase = delta.increase
-      if increase
-        @getAccount(increase.account).getBalance(increase.currency).increase increase.amount
+      operation = delta.operation
+      if operation
+        account = @getAccount(operation.account)
+        deposit = operation.deposit
+        if deposit
+          account.getBalance(deposit.currency).increase deposit.amount
+        else
+          console.error 'Unknown operation received:'
+          console.error delta
       else
         console.error 'Unknown delta received:'
         console.error delta

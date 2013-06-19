@@ -9,6 +9,7 @@ supertest = require 'supertest'
 zmq = require 'zmq'
 uuid = require 'node-uuid'
 ports = require '../support/ports'
+Amount = require '../../src/Amount'
 
 request = null
 ceOperationHub = null
@@ -17,18 +18,20 @@ currentDelta = 0
 state = null
 server = null
 
-increaseBalance = (increase) ->
-  account = state.accounts[increase.account]
+applyOperation = (operation) ->
+  account = state.accounts[operation.account]
   if !account
-    state.accounts[increase.account] = account = 
+    state.accounts[operation.account] = account = 
       balances: Object.create null
-  balances = account.balances
-  if !balances[increase.currency]
-    balances[increase.currency] = '0'
-  balances[increase.currency] = (parseFloat(balances[increase.currency]) + parseFloat(increase.amount)) + ''
+  deposit = operation.deposit
+  if deposit
+    balances = account.balances
+    if !balances[deposit.currency]
+      balances[deposit.currency] = Amount.ZERO.toString()
+    balances[deposit.currency] = ((new Amount(balances[deposit.currency])).add new Amount(deposit.amount)).toString()
   delta = 
     id: currentDelta++
-    increase: increase
+    operation: operation
   state.nextId = currentDelta
   ceDeltaHub.stream.send JSON.stringify delta  
 
@@ -95,74 +98,116 @@ describe 'Server', ->
       ceDeltaHub.state.on 'message', (ref) =>
         args = Array.apply null, arguments
         # publishing some deltas before sending the state
-        increaseBalance
+        applyOperation
           account: 'Peter'
-          currency: 'EUR'
-          amount: '5000'
-        increaseBalance
+          id: 13
+          result: 'success'
+          deposit:
+            currency: 'EUR'
+            amount: '5000'
+        applyOperation
           account: 'Peter'
-          currency: 'BTC'
-          amount: '50'
-        increaseBalance
+          id: 14
+          result: 'success'
+          deposit:
+            currency: 'BTC'
+            amount: '50'
+        applyOperation
           account: 'Paul'
-          currency: 'USD'
-          amount: '7500'
+          id: 15
+          result: 'success'
+          deposit:
+            currency: 'USD'
+            amount: '7500'
         # wait a bit before sending the state to ensure that the previous increases were cached 
         setTimeout =>
           # send the state now which should result in the previous deltas being ignored
           ceDeltaHub.state.send [ref, JSON.stringify state]
           # now send some more deltas
-          increaseBalance
+          applyOperation
             account: 'Peter'
-            currency: 'EUR'
-            amount: '2500'
-          increaseBalance
+            id: 16
+            result: 'success'
+            deposit:
+              currency: 'EUR'
+              amount: '2500'
+          applyOperation
             account: 'Peter'
-            currency: 'BTC'
-            amount: '75'
-          increaseBalance
-            account: 'Paul'
-            currency: 'USD'
-            amount: '5000'
-          # send some deltas for an account not in the sent state
-          increaseBalance
-            account: 'Tom'
-            currency: 'BTC'
-            amount: '2500'
-          increaseBalance
-            account: 'Tom'
-            currency: 'EUR'
-            amount: '2500'
-          # wait a bit so that the state has been received then send some more deltas
-          setTimeout =>
-            increaseBalance
-              account: 'Peter'
+            id: 17
+            result: 'success'
+            deposit:
               currency: 'BTC'
               amount: '75'
-            increaseBalance
-              account: 'Paul'
+          applyOperation
+            account: 'Paul'
+            id: 18
+            result: 'success'
+            deposit:
               currency: 'USD'
               amount: '5000'
-            increaseBalance
-              account: 'Tom'
+          # send some deltas for an account not in the sent state
+          applyOperation
+            account: 'Tom'
+            id: 19
+            result: 'success'
+            deposit:
               currency: 'BTC'
               amount: '2500'
+          applyOperation
+            account: 'Tom'
+            id: 20
+            result: 'success'
+            deposit:
+              currency: 'EUR'
+              amount: '2500'
+          # wait a bit so that the state has been received then send some more deltas
+          setTimeout =>
+            applyOperation
+              account: 'Peter'
+              id: 21
+              result: 'success'
+              deposit:
+                currency: 'BTC'
+                amount: '75'
+            applyOperation
+              account: 'Paul'
+              id: 22
+              result: 'success'
+              deposit:
+                currency: 'USD'
+                amount: '5000'
+            applyOperation
+              account: 'Tom'
+              id: 23
+              result: 'success'
+              deposit:
+                currency: 'BTC'
+                amount: '2500'
             checklist.check 'deltas sent'
           , 250
         , 250
       # send some deltas before the server starts
-      increaseBalance
+      applyOperation
         account: 'Peter'
-        currency: 'EUR'
-        amount: '2500'
-      increaseBalance
+        id: 10
+        result: 'success'
+        deposit:
+          currency: 'EUR'
+          amount: '2500'
+      applyOperation
         account: 'Peter'
-        currency: 'BTC'
-        amount: '25'
-      increaseBalance
+        id: 11
+        result: 'success'
+        deposit:
+          currency: 'BTC'
+          amount: '25'
+      applyOperation
         account: 'Paul'
-        currency: 'USD'
-        amount: '2500'
+        id: 12
+        result: 'success'
+        deposit:
+          currency: 'USD'
+          amount: '2500'
       server.start (error) =>
         checklist.check 'server started'
 
@@ -284,11 +329,11 @@ describe 'Server', ->
         ceOperationHub.on 'message', (ref, frontEndRef, message) =>
           operation = JSON.parse message
           operation.account.should.equal 'Peter'
-          order = operation.order
-          order.bidCurrency.should.equal 'EUR'
-          order.offerCurrency.should.equal 'BTC'
-          order.bidPrice.should.equal '100'
-          order.bidAmount.should.equal '50'
+          submit = operation.submit
+          submit.bidCurrency.should.equal 'EUR'
+          submit.offerCurrency.should.equal 'BTC'
+          submit.bidPrice.should.equal '100'
+          submit.bidAmount.should.equal '50'
           operation.id = id
           ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
         request
@@ -306,11 +351,11 @@ describe 'Server', ->
           operation = response.body
           operation.id.should.equal id
           operation.account.should.equal 'Peter'
-          order = operation.order
-          order.bidCurrency.should.equal 'EUR'
-          order.offerCurrency.should.equal 'BTC'
-          order.bidPrice.should.equal '100'
-          order.bidAmount.should.equal '50'
+          submit = operation.submit
+          submit.bidCurrency.should.equal 'EUR'
+          submit.offerCurrency.should.equal 'BTC'
+          submit.bidPrice.should.equal '100'
+          submit.bidAmount.should.equal '50'
           done()
 
       it 'should accept multiple orders posted simultaneously and forward them to the ce-operation-hub', (done) ->
@@ -323,7 +368,7 @@ describe 'Server', ->
         ], done
         ceOperationHub.on 'message', (ref, frontEndRef, message) =>
           operation = JSON.parse message
-          operation.id = operation.order.bidCurrency + operation.order.offerCurrency
+          operation.id = operation.submit.bidCurrency + operation.submit.offerCurrency
           # reply asynchronously and in reverse order
           setTimeout =>
             ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
@@ -343,11 +388,11 @@ describe 'Server', ->
           operation = response.body
           operation.id.should.equal 'EURBTC'
           operation.account.should.equal 'Peter'
-          order = operation.order
-          order.bidCurrency.should.equal 'EUR'
-          order.offerCurrency.should.equal 'BTC'
-          order.bidPrice.should.equal '100'
-          order.bidAmount.should.equal '50'
+          submit = operation.submit
+          submit.bidCurrency.should.equal 'EUR'
+          submit.offerCurrency.should.equal 'BTC'
+          submit.bidPrice.should.equal '100'
+          submit.bidAmount.should.equal '50'
           checklist.check operation.id
         request
         .post('/orders/Peter/')
@@ -364,11 +409,11 @@ describe 'Server', ->
           operation = response.body
           operation.id.should.equal 'BTCEUR'
           operation.account.should.equal 'Peter'
-          order = operation.order
-          order.bidCurrency.should.equal 'BTC'
-          order.offerCurrency.should.equal 'EUR'
-          order.bidPrice.should.equal '0.01'
-          order.bidAmount.should.equal '5000'
+          submit = operation.submit
+          submit.bidCurrency.should.equal 'BTC'
+          submit.offerCurrency.should.equal 'EUR'
+          submit.bidPrice.should.equal '0.01'
+          submit.bidAmount.should.equal '5000'
           checklist.check operation.id
         request
         .post('/orders/Peter/')
@@ -385,9 +430,9 @@ describe 'Server', ->
           operation = response.body
           operation.id.should.equal 'USDBTC'
           operation.account.should.equal 'Peter'
-          order = operation.order
-          order.bidCurrency.should.equal 'USD'
-          order.offerCurrency.should.equal 'BTC'
-          order.bidPrice.should.equal '150'
-          order.bidAmount.should.equal '75'
+          submit = operation.submit
+          submit.bidCurrency.should.equal 'USD'
+          submit.offerCurrency.should.equal 'BTC'
+          submit.bidPrice.should.equal '150'
+          submit.bidAmount.should.equal '75'
           checklist.check operation.id

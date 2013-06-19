@@ -46,24 +46,33 @@ describe 'State', ->
       state = new State()
       state.apply
         id: 0
-        increase:
+        operation:
           account: 'Peter'
-          currency: 'EUR'
-          amount: '100'
+          id: 10
+          result: 'success'
+          deposit:
+            currency: 'EUR'
+            amount: '100'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '100'
       state.apply
         id: 1
-        increase:
+        operation:
           account: 'Peter'
-          currency: 'EUR'
-          amount: '150'
+          id: 11
+          result: 'success'
+          deposit:
+            currency: 'EUR'
+            amount: '150'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '250'
       state.apply
         id: 2
-        increase:
+        operation:
           account: 'Peter'
-          currency: 'EUR'
-          amount: '50'
+          id: 12
+          result: 'success'
+          deposit:
+            currency: 'EUR'
+            amount: '50'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '300'
 
     it 'should ignore deltas with an ID lower than expected as such a delta will have already been applied', ->
@@ -75,10 +84,13 @@ describe 'State', ->
               'EUR': '5000'
       state.apply
         id: 1234567889
-        increase:
+        operation:
           account: 'Peter'
-          currency: 'EUR'
-          amount: '50'
+          id: 10
+          result: 'success'
+          deposit:
+            currency: 'EUR'
+            amount: '50'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '5000'
 
     it 'should log unknown deltas', ->
@@ -87,14 +99,38 @@ describe 'State', ->
         id: 0
         unknown:
           account: 'Peter'
-          currency: 'BTC'
-          amount: '50'
+          id: 10
+          result: 'success'
+          deposit:
+            currency: 'EUR'
+            amount: '50'
       original = console.error
       secondMessage = (message) =>
         message.should.deep.equal delta
         console.error = original
       firstMessage = (message) =>
         message.should.equal 'Unknown delta received:'
+        console.error = secondMessage
+      console.error = firstMessage
+      state.apply delta
+
+    it 'should log unknown operations', ->
+      state = new State()
+      delta = 
+        id: 0
+        operation:
+          account: 'Peter'
+          id: 10
+          result: 'success'
+          unknown:
+            currency: 'EUR'
+            amount: '50'
+      original = console.error
+      secondMessage = (message) =>
+        message.should.deep.equal delta
+        console.error = original
+      firstMessage = (message) =>
+        message.should.equal 'Unknown operation received:'
         console.error = secondMessage
       console.error = firstMessage
       state.apply delta

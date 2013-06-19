@@ -52,19 +52,6 @@ module.exports = class Server
     @expressServer.get '/balances/:account/:currency', (request, response) =>
       response.json 200, @state.getAccount(request.params.account).getBalance(request.params.currency).getAmount()
 
-    @expressServer.post '/orders/:account/', (request, response) =>
-      frontEndRef = uuid.v1()
-      responseHandler = (ref, message) =>
-        if ref.toString() == frontEndRef
-          @ceOperationHub.removeListener 'message', responseHandler
-          operation = JSON.parse message
-          response.json 200, operation
-      @ceOperationHub.on 'message', responseHandler
-      operation = 
-        account: request.params.account
-        order: request.body
-      @ceOperationHub.send [frontEndRef, JSON.stringify operation]
-
     @expressServer.post '/deposits/:account/', (request, response) =>
       frontEndRef = uuid.v1()
       responseHandler = (ref, message) =>
@@ -76,6 +63,19 @@ module.exports = class Server
       operation = 
         account: request.params.account
         deposit: request.body
+      @ceOperationHub.send [frontEndRef, JSON.stringify operation]
+
+    @expressServer.post '/orders/:account/', (request, response) =>
+      frontEndRef = uuid.v1()
+      responseHandler = (ref, message) =>
+        if ref.toString() == frontEndRef
+          @ceOperationHub.removeListener 'message', responseHandler
+          operation = JSON.parse message
+          response.json 200, operation
+      @ceOperationHub.on 'message', responseHandler
+      operation = 
+        account: request.params.account
+        submit: request.body
       @ceOperationHub.send [frontEndRef, JSON.stringify operation]
 
   stop: (callback) =>
