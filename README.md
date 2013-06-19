@@ -12,18 +12,20 @@ configuration should be placed in a file called `config.json` in the root of the
 
 ```javascript
 {
-  // Listens for operations and queries over HTTP on the configured `port`
+  // Port for HTTP/REST API
   "port": 8000,
-  // Forwards operations to the configured `ce-operation-hub` using 0MQ `XREQ` socket
+  // Submits operations to and receives operation results from the configured `ce-operation-hub`
   "ce-operation-hub": {
     "host": "localhost",
+    // Port for 0MQ `xreq` socket
     "submit": 8001
   },
-  // Receives market deltas from the configured `ce-delta-hub` using 0MQ `XREQ` socket
-  // for the initial state and `SUB` socket for subsequent deltas
+  // Requests market state and receives market deltas streamed from the configured `ce-delta-hub`
   "ce-delta-hub": {
     "host": "localhost",
+    // Port for 0MQ `sub` socket
     "stream": 8002,
+    // Port for 0MQ `xreq` socket
     "state": 8003
   }
 }
@@ -50,8 +52,9 @@ Output will be logged to the following files
 
 Query an account's balances
 
+Response:
+
 ```javascript
-// Response
 {
   "EUR": "5000",
   "BTC": "50"
@@ -62,6 +65,8 @@ Query an account's balances
 
 Query an account's balance in a particular currency
 
+Response:
+
 ```javascript
 "5000"
 ```
@@ -70,45 +75,84 @@ Query an account's balance in a particular currency
 
 Deposit funds into an account
 
+Request:
+
 ```javascript
-// Send
 {
   "currency": "EUR",
   "amount": "5000"
 }
+```
 
-// Response
+Response:
+
+```javascript
 {
-  "currency": "EUR",
-  "amount": "5000",
-  "id": 123456789,
-  "status": "success"
+  "account": "[account]",
+  "id": "1234567890",
+  "result": "success",
+  "deposit": {
+    "currency": "EUR",
+    "amount": "5000"
+  }
 }
 ```
+
+##### Operations
+
+The following operations may be triggered synchronously
+
+- `deposit`
+
+##### Deltas
+
+The following deltas may be received asynchronously
+
+- `increase` - resulting from the balance increase
 
 #### `POST /orders/[account]/`
 
 Add an order to a book
 
+Request:
+
 ```javascript
-// Send
 {
   "bidCurrency": "BTC",
   "offerCurrency": "EUR",
   "bidPrice": "100",
   "bidAmount": "50"
 }
+```
 
-// Response
+Response:
+
+```javascript
 {
-  "bidCurrency": "BTC",
-  "offerCurrency": "EUR",
-  "bidPrice": "100",
-  "bidAmount": "50",
-  "id": 123456789,
-  "status": "success"
+  "account": "[account]",
+  "id": "1234567890",
+  "result": "success",
+  "order": {
+    "bidCurrency": "BTC",
+    "offerCurrency": "EUR",
+    "bidPrice": "100",
+    "bidAmount": "50"
+  }
 }
 ```
+
+##### Operations
+
+The following operations may be triggered synchronously
+
+- `order`
+
+##### Deltas
+
+The following deltas may be received asynchronously
+
+- `add` - resulting from the addition of the order
+- `trade` - resulting from trades executed as a result of adding the order
 
 ## Roadmap
 
