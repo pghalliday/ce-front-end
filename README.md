@@ -108,7 +108,7 @@ The following operations may be triggered synchronously
 
 The following deltas may be received asynchronously
 
-- `increase` - resulting from the balance increase
+- `deposit`
 
 #### `POST /orders/[account]/`
 
@@ -145,13 +145,13 @@ Response:
 
 The following operations may be triggered synchronously
 
-- `order`
+- `submit`
 
 ##### Deltas
 
 The following deltas may be received asynchronously
 
-- `add` - resulting from the addition of the order
+- `submit`
 - `trade` - resulting from trades executed as a result of adding the order
 
 ## Roadmap
