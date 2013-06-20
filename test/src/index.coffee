@@ -10,11 +10,11 @@ describe 'ce-front-end', ->
   it 'should take parameters from a file specified on the command line', (done) ->
     this.timeout 5000
     request = supertest 'http://localhost:7000'
-    ceOperationHub = zmq.socket 'xrep'
+    ceOperationHub = zmq.socket 'router'
     ceOperationHub.bindSync 'tcp://*:7001'
     ceDeltaHub = 
       stream: zmq.socket 'pub'
-      state: zmq.socket 'xrep'
+      state: zmq.socket 'router'
     ceDeltaHub.stream.bindSync 'tcp://*:7002'
     ceDeltaHub.state.bindSync 'tcp://*:7003'
     state =

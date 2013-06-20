@@ -17,7 +17,7 @@ configuration should be placed in a file called `config.json` in the root of the
   // Submits operations to and receives operation results from the configured `ce-operation-hub`
   "ce-operation-hub": {
     "host": "localhost",
-    // Port for 0MQ `xreq` socket
+    // Port for 0MQ `dealer` socket
     "submit": 8001
   },
   // Requests market state and receives market deltas streamed from the configured `ce-delta-hub`
@@ -25,7 +25,7 @@ configuration should be placed in a file called `config.json` in the root of the
     "host": "localhost",
     // Port for 0MQ `sub` socket
     "stream": 8002,
-    // Port for 0MQ `xreq` socket
+    // Port for 0MQ `dealer` socket
     "state": 8003
   }
 }

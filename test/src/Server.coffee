@@ -39,12 +39,12 @@ describe 'Server', ->
   beforeEach ->
     httpPort = ports()
     request = supertest 'http://localhost:' + httpPort
-    ceOperationHub = zmq.socket 'xrep'
+    ceOperationHub = zmq.socket 'router'
     ceOperationHubSubmitPort = ports()
     ceOperationHub.bindSync 'tcp://*:' + ceOperationHubSubmitPort
     ceDeltaHub = 
       stream: zmq.socket 'pub'
-      state: zmq.socket 'xrep'
+      state: zmq.socket 'router'
     ceDeltaHubStreamPort = ports()
     ceDeltaHub.stream.bindSync 'tcp://*:' + ceDeltaHubStreamPort
     ceDeltaHubStatePort = ports()

@@ -10,10 +10,10 @@ module.exports = class Server
     @connections = []
     @expressServer = express()
     @httpServer = http.createServer @expressServer
-    @ceOperationHub = zmq.socket 'xreq'
+    @ceOperationHub = zmq.socket 'dealer'
     @ceDeltaHub =
       stream: zmq.socket 'sub'
-      state: zmq.socket 'xreq'
+      state: zmq.socket 'dealer'
     @ceDeltaHub.stream.subscribe ''
     @deltas = []
 
