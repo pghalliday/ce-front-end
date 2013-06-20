@@ -90,7 +90,8 @@ Response:
 {
   "reference": "550e8400-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567890",
+  "sequence": 1234567890,
+  "timestamp": 1371737390976,
   "result": "success",
   "deposit": {
     "currency": "EUR",
@@ -132,7 +133,8 @@ Response:
 {
   "reference": "550e8400-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567890",
+  "sequence": 1234567890,
+  "timestamp": 1371737390976,
   "result": "success",
   "order": {
     "bidCurrency": "BTC",
