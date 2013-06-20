@@ -26,7 +26,7 @@ describe 'State', ->
 
   it 'should instantiate from a known state', ->
     state = new State
-      nextId: 1234567890
+      nextSequence: 1234567890
       accounts: 
         'Peter':
           balances:
@@ -45,30 +45,30 @@ describe 'State', ->
     it 'should apply deltas with sequential IDs', ->
       state = new State()
       state.apply
-        id: 0
+        sequence: 0
         operation:
           account: 'Peter'
-          id: 10
+          sequence: 10
           result: 'success'
           deposit:
             currency: 'EUR'
             amount: '100'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '100'
       state.apply
-        id: 1
+        sequence: 1
         operation:
           account: 'Peter'
-          id: 11
+          sequence: 11
           result: 'success'
           deposit:
             currency: 'EUR'
             amount: '150'
       state.getAccount('Peter').getBalance('EUR').getAmount().should.equal '250'
       state.apply
-        id: 2
+        sequence: 2
         operation:
           account: 'Peter'
-          id: 12
+          sequence: 12
           result: 'success'
           deposit:
             currency: 'EUR'
@@ -77,16 +77,16 @@ describe 'State', ->
 
     it 'should ignore deltas with an ID lower than expected as such a delta will have already been applied', ->
       state = new State
-        nextId: 1234567890
+        nextSequence: 1234567890
         accounts: 
           'Peter':
             balances:
               'EUR': '5000'
       state.apply
-        id: 1234567889
+        sequence: 1234567889
         operation:
           account: 'Peter'
-          id: 10
+          sequence: 10
           result: 'success'
           deposit:
             currency: 'EUR'
@@ -96,10 +96,10 @@ describe 'State', ->
     it 'should log unknown deltas', ->
       state = new State()
       delta = 
-        id: 0
+        sequence: 0
         unknown:
           account: 'Peter'
-          id: 10
+          sequence: 10
           result: 'success'
           deposit:
             currency: 'EUR'
@@ -117,10 +117,10 @@ describe 'State', ->
     it 'should log unknown operations', ->
       state = new State()
       delta = 
-        id: 0
+        sequence: 0
         operation:
           account: 'Peter'
-          id: 10
+          sequence: 10
           result: 'success'
           unknown:
             currency: 'EUR'

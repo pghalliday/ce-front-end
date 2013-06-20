@@ -30,9 +30,9 @@ applyOperation = (operation) ->
       balances[deposit.currency] = Amount.ZERO.toString()
     balances[deposit.currency] = ((new Amount(balances[deposit.currency])).add new Amount(deposit.amount)).toString()
   delta = 
-    id: currentDelta++
+    sequence: currentDelta++
     operation: operation
-  state.nextId = currentDelta
+  state.nextSequence = currentDelta
   ceDeltaHub.stream.send JSON.stringify delta  
 
 describe 'Server', ->
@@ -100,21 +100,21 @@ describe 'Server', ->
         # publishing some deltas before sending the state
         applyOperation
           account: 'Peter'
-          id: 13
+          sequence: 13
           result: 'success'
           deposit:
             currency: 'EUR'
             amount: '5000'
         applyOperation
           account: 'Peter'
-          id: 14
+          sequence: 14
           result: 'success'
           deposit:
             currency: 'BTC'
             amount: '50'
         applyOperation
           account: 'Paul'
-          id: 15
+          sequence: 15
           result: 'success'
           deposit:
             currency: 'USD'
@@ -126,21 +126,21 @@ describe 'Server', ->
           # now send some more deltas
           applyOperation
             account: 'Peter'
-            id: 16
+            sequence: 16
             result: 'success'
             deposit:
               currency: 'EUR'
               amount: '2500'
           applyOperation
             account: 'Peter'
-            id: 17
+            sequence: 17
             result: 'success'
             deposit:
               currency: 'BTC'
               amount: '75'
           applyOperation
             account: 'Paul'
-            id: 18
+            sequence: 18
             result: 'success'
             deposit:
               currency: 'USD'
@@ -148,14 +148,14 @@ describe 'Server', ->
           # send some deltas for an account not in the sent state
           applyOperation
             account: 'Tom'
-            id: 19
+            sequence: 19
             result: 'success'
             deposit:
               currency: 'BTC'
               amount: '2500'
           applyOperation
             account: 'Tom'
-            id: 20
+            sequence: 20
             result: 'success'
             deposit:
               currency: 'EUR'
@@ -164,21 +164,21 @@ describe 'Server', ->
           setTimeout =>
             applyOperation
               account: 'Peter'
-              id: 21
+              sequence: 21
               result: 'success'
               deposit:
                 currency: 'BTC'
                 amount: '75'
             applyOperation
               account: 'Paul'
-              id: 22
+              sequence: 22
               result: 'success'
               deposit:
                 currency: 'USD'
                 amount: '5000'
             applyOperation
               account: 'Tom'
-              id: 23
+              sequence: 23
               result: 'success'
               deposit:
                 currency: 'BTC'
@@ -189,21 +189,21 @@ describe 'Server', ->
       # send some deltas before the server starts
       applyOperation
         account: 'Peter'
-        id: 10
+        sequence: 10
         result: 'success'
         deposit:
           currency: 'EUR'
           amount: '2500'
       applyOperation
         account: 'Peter'
-        id: 11
+        sequence: 11
         result: 'success'
         deposit:
           currency: 'BTC'
           amount: '25'
       applyOperation
         account: 'Paul'
-        id: 12
+        sequence: 12
         result: 'success'
         deposit:
           currency: 'USD'
@@ -296,14 +296,14 @@ describe 'Server', ->
 
     describe 'POST /deposits/[account]/', ->
       it 'should accept deposits and forward them to the ce-operation-hub', (done) ->
-        id = uuid.v1()
+        sequence = uuid.v1()
         ceOperationHub.on 'message', (ref, message) =>
           operation = JSON.parse message
           operation.account.should.equal 'Peter'
           deposit = operation.deposit
           deposit.currency.should.equal 'EUR'
           deposit.amount.should.equal '50'
-          operation.id = id
+          operation.sequence = sequence
           ceOperationHub.send [ref, JSON.stringify operation]
         request
         .post('/deposits/Peter/')
@@ -316,7 +316,7 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           operation = response.body
-          operation.id.should.equal id
+          operation.sequence.should.equal sequence
           operation.account.should.equal 'Peter'
           deposit = operation.deposit
           deposit.currency.should.equal 'EUR'
@@ -325,7 +325,7 @@ describe 'Server', ->
 
     describe 'POST /orders/[account]/', ->
       it 'should accept orders and forward them to the ce-operation-hub', (done) ->
-        id = uuid.v1()
+        sequence = uuid.v1()
         ceOperationHub.on 'message', (ref, message) =>
           operation = JSON.parse message
           operation.account.should.equal 'Peter'
@@ -334,7 +334,7 @@ describe 'Server', ->
           submit.offerCurrency.should.equal 'BTC'
           submit.bidPrice.should.equal '100'
           submit.bidAmount.should.equal '50'
-          operation.id = id
+          operation.sequence = sequence
           ceOperationHub.send [ref, JSON.stringify operation]
         request
         .post('/orders/Peter/')
@@ -349,7 +349,7 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           operation = response.body
-          operation.id.should.equal id
+          operation.sequence.should.equal sequence
           operation.account.should.equal 'Peter'
           submit = operation.submit
           submit.bidCurrency.should.equal 'EUR'
@@ -368,7 +368,7 @@ describe 'Server', ->
         ], done
         ceOperationHub.on 'message', (ref, message) =>
           operation = JSON.parse message
-          operation.id = operation.submit.bidCurrency + operation.submit.offerCurrency
+          operation.sequence = operation.submit.bidCurrency + operation.submit.offerCurrency
           # reply asynchronously and in reverse order
           setTimeout =>
             ceOperationHub.send [ref, JSON.stringify operation]
@@ -386,14 +386,14 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           operation = response.body
-          operation.id.should.equal 'EURBTC'
+          operation.sequence.should.equal 'EURBTC'
           operation.account.should.equal 'Peter'
           submit = operation.submit
           submit.bidCurrency.should.equal 'EUR'
           submit.offerCurrency.should.equal 'BTC'
           submit.bidPrice.should.equal '100'
           submit.bidAmount.should.equal '50'
-          checklist.check operation.id
+          checklist.check operation.sequence
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
@@ -407,14 +407,14 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           operation = response.body
-          operation.id.should.equal 'BTCEUR'
+          operation.sequence.should.equal 'BTCEUR'
           operation.account.should.equal 'Peter'
           submit = operation.submit
           submit.bidCurrency.should.equal 'BTC'
           submit.offerCurrency.should.equal 'EUR'
           submit.bidPrice.should.equal '0.01'
           submit.bidAmount.should.equal '5000'
-          checklist.check operation.id
+          checklist.check operation.sequence
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
@@ -428,11 +428,11 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           operation = response.body
-          operation.id.should.equal 'USDBTC'
+          operation.sequence.should.equal 'USDBTC'
           operation.account.should.equal 'Peter'
           submit = operation.submit
           submit.bidCurrency.should.equal 'USD'
           submit.offerCurrency.should.equal 'BTC'
           submit.bidPrice.should.equal '150'
           submit.bidAmount.should.equal '75'
-          checklist.check operation.id
+          checklist.check operation.sequence

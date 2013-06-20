@@ -3,9 +3,9 @@ Account = require './Account'
 module.exports = class State
   constructor: (state) ->
     @accounts = Object.create null
-    @nextId = 0
+    @nextSequence = 0
     if state
-      @nextId = state.nextId
+      @nextSequence = state.nextSequence
       for id, account of state.accounts
         @accounts[id] = new Account account
 
@@ -13,8 +13,8 @@ module.exports = class State
     @accounts[id] = @accounts[id] || new Account()
 
   apply: (delta) =>
-    if delta.id == @nextId
-      @nextId++
+    if delta.sequence == @nextSequence
+      @nextSequence++
       operation = delta.operation
       if operation
         account = @getAccount(operation.account)

@@ -18,7 +18,7 @@ describe 'ce-front-end', ->
     ceDeltaHub.stream.bindSync 'tcp://*:7002'
     ceDeltaHub.state.bindSync 'tcp://*:7003'
     state =
-      nextId: 1234567890
+      nextSequence: 1234567890
       accounts:
         'Peter':
           balances:
