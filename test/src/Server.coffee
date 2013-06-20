@@ -297,14 +297,14 @@ describe 'Server', ->
     describe 'POST /deposits/[account]/', ->
       it 'should accept deposits and forward them to the ce-operation-hub', (done) ->
         id = uuid.v1()
-        ceOperationHub.on 'message', (ref, frontEndRef, message) =>
+        ceOperationHub.on 'message', (ref, message) =>
           operation = JSON.parse message
           operation.account.should.equal 'Peter'
           deposit = operation.deposit
           deposit.currency.should.equal 'EUR'
           deposit.amount.should.equal '50'
           operation.id = id
-          ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
+          ceOperationHub.send [ref, JSON.stringify operation]
         request
         .post('/deposits/Peter/')
         .set('Accept', 'application/json')
@@ -326,7 +326,7 @@ describe 'Server', ->
     describe 'POST /orders/[account]/', ->
       it 'should accept orders and forward them to the ce-operation-hub', (done) ->
         id = uuid.v1()
-        ceOperationHub.on 'message', (ref, frontEndRef, message) =>
+        ceOperationHub.on 'message', (ref, message) =>
           operation = JSON.parse message
           operation.account.should.equal 'Peter'
           submit = operation.submit
@@ -335,7 +335,7 @@ describe 'Server', ->
           submit.bidPrice.should.equal '100'
           submit.bidAmount.should.equal '50'
           operation.id = id
-          ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
+          ceOperationHub.send [ref, JSON.stringify operation]
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
@@ -366,12 +366,12 @@ describe 'Server', ->
           'BTCEUR'
           'USDBTC'
         ], done
-        ceOperationHub.on 'message', (ref, frontEndRef, message) =>
+        ceOperationHub.on 'message', (ref, message) =>
           operation = JSON.parse message
           operation.id = operation.submit.bidCurrency + operation.submit.offerCurrency
           # reply asynchronously and in reverse order
           setTimeout =>
-            ceOperationHub.send [ref, frontEndRef, JSON.stringify operation]
+            ceOperationHub.send [ref, JSON.stringify operation]
           , timeouts[timeoutIndex++]
         request
         .post('/orders/Peter/')
