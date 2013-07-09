@@ -214,9 +214,6 @@ describe 'Server', ->
       server.stop (error) =>
         done error
 
-    describe 'GET /browser', ->
-      it.skip 'should serve the HAL browser', (done) ->
-        done()
 
     describe 'GET /', ->
       it 'should return the home page', (done) ->
@@ -226,6 +223,15 @@ describe 'Server', ->
         .expect(200)
         .expect('Content-Type', /html/)
         .expect 'hello', done
+
+    describe 'GET /hal/browser.html', ->
+      it 'should serve the HAL browser', (done) ->
+        request
+        .get('/hal/browser.html')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect /The HAL Browser/, done
 
     describe 'GET /balances/[account]/', ->
       it 'should return an empty object for unknown accounts', (done) ->

@@ -46,6 +46,9 @@ module.exports = class Server
     # enable parsing of posted data
     @expressServer.use express.bodyParser()
 
+    # expose the HAL browser
+    @expressServer.use '/hal', express.static 'thirdparty/hal-browser'
+
     @expressServer.get '/', (request, response) =>
       response.send 200, 'hello'
 
