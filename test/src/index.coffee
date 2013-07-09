@@ -5,6 +5,31 @@ expect = chai.expect
 ChildDaemon = require 'child-daemon'
 supertest = require 'supertest'
 zmq = require 'zmq'
+Engine = require('currency-market').Engine
+Operation = require('currency-market').Operation
+Delta = require('currency-market').Delta
+State = require('currency-market').State
+Amount = require('currency-market').Amount
+
+request = null
+ceOperationHub = null
+ceDeltaHub = null
+engine = null
+state = null
+server = null
+sequence = 0
+
+COMMISSION_RATE = new Amount '0.001'
+COMMISSION_REFERENCE = '0.1%'
+
+applyOperation = (operation) ->
+  operation.accept
+    sequence: sequence++
+    timestamp: Date.now()
+  delta = engine.apply operation
+  state.apply delta
+  ceDeltaHub.stream.send JSON.stringify delta
+  return delta
 
 describe 'ce-front-end', ->
   it 'should take parameters from a file specified on the command line', (done) ->
@@ -17,13 +42,33 @@ describe 'ce-front-end', ->
       state: zmq.socket 'router'
     ceDeltaHub.stream.bindSync 'tcp://*:7002'
     ceDeltaHub.state.bindSync 'tcp://*:7003'
-    state =
-      nextSequence: 1234567890
-      accounts:
-        'Peter':
-          balances:
-            'EUR': '5000'
-            'BTC': '50'
+    sequence = 0
+    engine = new Engine
+      commission:
+        account: 'commission'
+        calculate: (params) ->
+          amount: params.amount.multiply COMMISSION_RATE
+          reference: COMMISSION_REFERENCE
+    state = new State
+      commission:
+        account: 'commission'
+      json: JSON.stringify engine
+    applyOperation new Operation
+      reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
+      account: 'Peter'
+      deposit:
+        currency: 'EUR'
+        amount: new Amount '5000'
+    applyOperation new Operation
+      reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
+      account: 'Peter'
+      deposit:
+        currency: 'BTC'
+        amount: new Amount '50'
+    ceOperationHub.on 'message', (ref, message) =>
+      delta = applyOperation new Operation
+        json: message
+      ceOperationHub.send [ref, JSON.stringify delta]
     ceDeltaHub.state.on 'message', (ref) =>
       # send the state so that the server can finish starting
       ceDeltaHub.state.send [ref, JSON.stringify state]
@@ -42,8 +87,8 @@ describe 'ce-front-end', ->
       .end (error, response) =>
         expect(error).to.not.be.ok
         balances = response.body
-        balances['EUR'].should.equal '5000'
-        balances['BTC'].should.equal '50'
+        balances['EUR'].funds.should.equal '5000'
+        balances['BTC'].funds.should.equal '50'
         childDaemon.stop (error) =>
           expect(error).to.not.be.ok
           ceOperationHub.close()

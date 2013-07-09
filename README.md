@@ -14,6 +14,10 @@ configuration should be placed in a file called `config.json` in the root of the
 {
   // Port for HTTP/REST API
   "port": 8000,
+  // Optional: account that receives commission
+  "commission": {
+    "account": "commission"
+  },
   // Submits operations to and receives operation results from the configured `ce-operation-hub`
   "ce-operation-hub": {
     "host": "localhost",
@@ -84,34 +88,6 @@ Request:
 }
 ```
 
-Response:
-
-```javascript
-{
-  "reference": "550e8400-e29b-41d4-a716-446655440000",
-  "account": "[account]",
-  "sequence": 1234567890,
-  "timestamp": 1371737390976,
-  "result": "success",
-  "deposit": {
-    "currency": "EUR",
-    "amount": "5000"
-  }
-}
-```
-
-##### Operations
-
-The following operations may be triggered synchronously
-
-- `deposit`
-
-##### Deltas
-
-The following deltas may be received asynchronously
-
-- `deposit`
-
 #### `POST /orders/[account]/`
 
 Add an order to a book
@@ -126,37 +102,6 @@ Request:
   "bidAmount": "50"
 }
 ```
-
-Response:
-
-```javascript
-{
-  "reference": "550e8400-e29b-41d4-a716-446655440000",
-  "account": "[account]",
-  "sequence": 1234567890,
-  "timestamp": 1371737390976,
-  "result": "success",
-  "order": {
-    "bidCurrency": "BTC",
-    "offerCurrency": "EUR",
-    "bidPrice": "100",
-    "bidAmount": "50"
-  }
-}
-```
-
-##### Operations
-
-The following operations may be triggered synchronously
-
-- `submit`
-
-##### Deltas
-
-The following deltas may be received asynchronously
-
-- `submit`
-- `trade` - resulting from trades executed as a result of adding the order
 
 ## Roadmap
 
@@ -173,20 +118,6 @@ Cancel an order
 #### `GET /books/[bid-currency]/[offer-currency]/`
 
 Query order book state
-
-#### `GET /deltas/`
-
-Query delta history
-
-- Deltas include
-  - trades
-  - addition, update or removal of orders
-- Deltas should have a sequence ID and this interface should accept a last sequence ID parameter to send deltas after that sequence ID
-- Should be able to specify (default to include nothing)
-  - list of bid currencies to include
-  - list of order currencies to include
-  - include trades
-  - include order book changes
 
 #### `GET /orders/[account]/`
 

@@ -1,5 +1,8 @@
 {
   "port": 7000,
+  "commission": {
+    "account": "commission"
+  },
   "ce-operation-hub": {
     "host": "localhost",
     "submit": 7001

@@ -7,33 +7,32 @@ Server = require '../../src/Server'
 
 supertest = require 'supertest'
 zmq = require 'zmq'
-uuid = require 'node-uuid'
 ports = require '../support/ports'
-Amount = require '../../src/Amount'
+Engine = require('currency-market').Engine
+Operation = require('currency-market').Operation
+Delta = require('currency-market').Delta
+State = require('currency-market').State
+Amount = require('currency-market').Amount
 
 request = null
 ceOperationHub = null
 ceDeltaHub = null
-currentDelta = 0
+engine = null
 state = null
 server = null
+sequence = 0
+
+COMMISSION_RATE = new Amount '0.001'
+COMMISSION_REFERENCE = '0.1%'
 
 applyOperation = (operation) ->
-  account = state.accounts[operation.account]
-  if !account
-    state.accounts[operation.account] = account = 
-      balances: Object.create null
-  deposit = operation.deposit
-  if deposit
-    balances = account.balances
-    if !balances[deposit.currency]
-      balances[deposit.currency] = Amount.ZERO.toString()
-    balances[deposit.currency] = ((new Amount(balances[deposit.currency])).add new Amount(deposit.amount)).toString()
-  delta = 
-    sequence: currentDelta++
-    operation: operation
-  state.nextSequence = currentDelta
-  ceDeltaHub.stream.send JSON.stringify delta  
+  operation.accept
+    sequence: sequence++
+    timestamp: Date.now()
+  delta = engine.apply operation
+  state.apply delta
+  ceDeltaHub.stream.send JSON.stringify delta
+  return delta
 
 describe 'Server', ->
   beforeEach ->
@@ -49,11 +48,21 @@ describe 'Server', ->
     ceDeltaHub.stream.bindSync 'tcp://*:' + ceDeltaHubStreamPort
     ceDeltaHubStatePort = ports()
     ceDeltaHub.state.bindSync 'tcp://*:' + ceDeltaHubStatePort
-    currentDelta = 0
-    state = 
-      accounts: Object.create null
+    sequence = 0
+    engine = new Engine
+      commission:
+        account: 'commission'
+        calculate: (params) ->
+          amount: params.amount.multiply COMMISSION_RATE
+          reference: COMMISSION_REFERENCE
+    state = new State
+      commission:
+        account: 'commission'
+      json: JSON.stringify engine
     server = new Server
       port: httpPort
+      commission:
+        account: 'commission'
       'ce-operation-hub':
         host: 'localhost'
         submit: ceOperationHubSubmitPort
@@ -95,125 +104,119 @@ describe 'Server', ->
         'deltas sent'
         'server started'
       ], done
+      ceOperationHub.on 'message', (ref, message) =>
+        delta = applyOperation new Operation
+          json: message
+        ceOperationHub.send [ref, JSON.stringify delta]
       ceDeltaHub.state.on 'message', (ref) =>
         args = Array.apply null, arguments
         # publishing some deltas before sending the state
-        applyOperation
+        applyOperation new Operation
+          reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
           account: 'Peter'
-          sequence: 13
-          result: 'success'
           deposit:
             currency: 'EUR'
-            amount: '5000'
-        applyOperation
+            amount: new Amount '5000'
+        applyOperation new Operation
+          reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
           account: 'Peter'
-          sequence: 14
-          result: 'success'
           deposit:
             currency: 'BTC'
-            amount: '50'
-        applyOperation
+            amount: new Amount '50'
+        applyOperation new Operation
+          reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
           account: 'Paul'
-          sequence: 15
-          result: 'success'
           deposit:
             currency: 'USD'
-            amount: '7500'
+            amount: new Amount '7500'
         # wait a bit before sending the state to ensure that the previous increases were cached 
         setTimeout =>
           # send the state now which should result in the previous deltas being ignored
           ceDeltaHub.state.send [ref, JSON.stringify state]
           # now send some more deltas
-          applyOperation
+          applyOperation new Operation
+            reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
             account: 'Peter'
-            sequence: 16
-            result: 'success'
             deposit:
               currency: 'EUR'
-              amount: '2500'
-          applyOperation
+              amount: new Amount '2500'
+          applyOperation new Operation
+            reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
             account: 'Peter'
-            sequence: 17
-            result: 'success'
             deposit:
               currency: 'BTC'
-              amount: '75'
-          applyOperation
+              amount: new Amount '75'
+          applyOperation new Operation
+            reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
             account: 'Paul'
-            sequence: 18
-            result: 'success'
             deposit:
               currency: 'USD'
-              amount: '5000'
+              amount: new Amount '5000'
           # send some deltas for an account not in the sent state
-          applyOperation
+          applyOperation new Operation
+            reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
             account: 'Tom'
-            sequence: 19
-            result: 'success'
             deposit:
               currency: 'BTC'
-              amount: '2500'
-          applyOperation
+              amount: new Amount '2500'
+          applyOperation new Operation
+            reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
             account: 'Tom'
-            sequence: 20
-            result: 'success'
             deposit:
               currency: 'EUR'
-              amount: '2500'
+              amount: new Amount '2500'
           # wait a bit so that the state has been received then send some more deltas
           setTimeout =>
-            applyOperation
+            applyOperation new Operation
+              reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
               account: 'Peter'
-              sequence: 21
-              result: 'success'
               deposit:
                 currency: 'BTC'
-                amount: '75'
-            applyOperation
+                amount: new Amount '75'
+            applyOperation new Operation
+              reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
               account: 'Paul'
-              sequence: 22
-              result: 'success'
               deposit:
                 currency: 'USD'
-                amount: '5000'
-            applyOperation
+                amount: new Amount '5000'
+            applyOperation new Operation
+              reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
               account: 'Tom'
-              sequence: 23
-              result: 'success'
               deposit:
                 currency: 'BTC'
-                amount: '2500'
+                amount: new Amount '2500'
             checklist.check 'deltas sent'
           , 250
         , 250
       # send some deltas before the server starts
-      applyOperation
+      applyOperation new Operation
+        reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
         account: 'Peter'
-        sequence: 10
-        result: 'success'
         deposit:
           currency: 'EUR'
-          amount: '2500'
-      applyOperation
+          amount: new Amount '2500'
+      applyOperation new Operation
+        reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
         account: 'Peter'
-        sequence: 11
-        result: 'success'
         deposit:
           currency: 'BTC'
-          amount: '25'
-      applyOperation
-        account: 'Paul'
-        sequence: 12
-        result: 'success'
+          amount: new Amount '25'
+      applyOperation new Operation
+        reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
+        account: 'Peter'
         deposit:
           currency: 'USD'
-          amount: '2500'
+          amount: new Amount '2500'
       server.start (error) =>
         checklist.check 'server started'
 
     afterEach (done) ->
       server.stop (error) =>
         done error
+
+    describe 'GET /browser', ->
+      it.skip 'should serve the HAL browser', (done) ->
+        done()
 
     describe 'GET /', ->
       it 'should return the home page', (done) ->
@@ -253,10 +256,12 @@ describe 'Server', ->
           .end (error, response) =>
             expect(error).to.not.be.ok
             balances = response.body
-            for currency, amount of balances
-              amount.should.equal account.balances[currency]
-            for currency, amount of account.balances
-              amount.should.equal balances[currency]
+            for currency, balance of balances
+              balance.funds.should.equal account.balances[currency].funds.toString()
+              balance.lockedFunds.should.equal account.balances[currency].lockedFunds.toString()
+            for currency, balance of account.balances
+              balance.funds.toString().should.equal balances[currency].funds
+              balance.lockedFunds.toString().should.equal balances[currency].lockedFunds
             checklist.check id
 
     describe 'GET /balances/[account]/[currency]', ->
@@ -269,10 +274,11 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           balance = response.body
-          balance.should.equal '0'
+          balance.funds.should.equal '0'
+          balance.lockedFunds.should.equal '0'
           done()
 
-      it 'should return the account balances received from the ce-delta-hub', (done) ->
+      it 'should return the account balance received from the ce-delta-hub', (done) ->
         checks = []
         for id, account of state.accounts
           for currency of account.balances
@@ -282,7 +288,8 @@ describe 'Server', ->
         Object.keys(state.accounts).forEach (id) =>
           account = state.accounts[id]
           Object.keys(account.balances).forEach (currency) =>
-            expectedBalance = account.balances[currency]
+            expectedFunds = account.balances[currency].funds.toString()
+            expectedLockedFunds = account.balances[currency].lockedFunds.toString()
             request
             .get('/balances/' + id + '/' + currency)
             .set('Accept', 'application/json')
@@ -291,20 +298,14 @@ describe 'Server', ->
             .end (error, response) =>
               expect(error).to.not.be.ok
               balance = response.body
-              balance.should.equal expectedBalance
+              balance.funds.should.equal expectedFunds
+              balance.lockedFunds.should.equal expectedLockedFunds
               checklist.check id + currency
 
     describe 'POST /deposits/[account]/', ->
       it 'should accept deposits and forward them to the ce-operation-hub', (done) ->
-        sequence = uuid.v1()
-        ceOperationHub.on 'message', (ref, message) =>
-          operation = JSON.parse message
-          operation.account.should.equal 'Peter'
-          deposit = operation.deposit
-          deposit.currency.should.equal 'EUR'
-          deposit.amount.should.equal '50'
-          operation.sequence = sequence
-          ceOperationHub.send [ref, JSON.stringify operation]
+        balance = state.getAccount('Peter').getBalance('EUR')
+        funds = balance.funds
         request
         .post('/deposits/Peter/')
         .set('Accept', 'application/json')
@@ -315,124 +316,93 @@ describe 'Server', ->
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          operation = response.body
-          operation.sequence.should.equal sequence
-          operation.account.should.equal 'Peter'
-          deposit = operation.deposit
-          deposit.currency.should.equal 'EUR'
-          deposit.amount.should.equal '50'
+          delta = new Delta
+            json: response.text
+          balance.funds.compareTo(funds.add(new Amount '50')).should.equal 0
+          delta.result.funds.compareTo(balance.funds).should.equal 0
           done()
 
     describe 'POST /orders/[account]/', ->
       it 'should accept orders and forward them to the ce-operation-hub', (done) ->
-        sequence = uuid.v1()
-        ceOperationHub.on 'message', (ref, message) =>
-          operation = JSON.parse message
-          operation.account.should.equal 'Peter'
-          submit = operation.submit
-          submit.bidCurrency.should.equal 'EUR'
-          submit.offerCurrency.should.equal 'BTC'
-          submit.bidPrice.should.equal '100'
-          submit.bidAmount.should.equal '50'
-          operation.sequence = sequence
-          ceOperationHub.send [ref, JSON.stringify operation]
-        request
-        .post('/orders/Peter/')
-        .set('Accept', 'application/json')
-        .send
-          bidCurrency: 'EUR'
-          offerCurrency: 'BTC'
-          bidPrice: '100'
-          bidAmount: '50'
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          operation = response.body
-          operation.sequence.should.equal sequence
-          operation.account.should.equal 'Peter'
-          submit = operation.submit
-          submit.bidCurrency.should.equal 'EUR'
-          submit.offerCurrency.should.equal 'BTC'
-          submit.bidPrice.should.equal '100'
-          submit.bidAmount.should.equal '50'
-          done()
-
-      it 'should accept multiple orders posted simultaneously and forward them to the ce-operation-hub', (done) ->
-        timeouts = [1000, 500, 0]
-        timeoutIndex = 0
-        checklist = new Checklist [
-          'EURBTC'
-          'BTCEUR'
-          'USDBTC'
-        ], done
-        ceOperationHub.on 'message', (ref, message) =>
-          operation = JSON.parse message
-          operation.sequence = operation.submit.bidCurrency + operation.submit.offerCurrency
-          # reply asynchronously and in reverse order
-          setTimeout =>
-            ceOperationHub.send [ref, JSON.stringify operation]
-          , timeouts[timeoutIndex++]
-        request
-        .post('/orders/Peter/')
-        .set('Accept', 'application/json')
-        .send
-          bidCurrency: 'EUR'
-          offerCurrency: 'BTC'
-          bidPrice: '100'
-          bidAmount: '50'
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          operation = response.body
-          operation.sequence.should.equal 'EURBTC'
-          operation.account.should.equal 'Peter'
-          submit = operation.submit
-          submit.bidCurrency.should.equal 'EUR'
-          submit.offerCurrency.should.equal 'BTC'
-          submit.bidPrice.should.equal '100'
-          submit.bidAmount.should.equal '50'
-          checklist.check operation.sequence
+        account = state.getAccount 'Peter'
+        balance = account.getBalance 'EUR'
+        orders = account.orders
+        book = state.getBook
+          bidCurrency: 'BTC'
+          offerCurrency: 'EUR'
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'BTC'
           offerCurrency: 'EUR'
+          bidPrice: '100'
+          bidAmount: '50'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          delta = new Delta
+            json: response.text
+          balance.lockedFunds.compareTo(new Amount '5000').should.equal 0
+          order = orders[delta.operation.sequence]
+          order.bidCurrency.should.equal 'BTC'
+          order.offerCurrency.should.equal 'EUR'
+          order.bidPrice.compareTo(new Amount '100').should.equal 0
+          order.bidAmount.compareTo(new Amount '50').should.equal 0
+          order.account.should.equal 'Peter'
+          book[0].should.equal order
+          done()
+
+      it 'should accept multiple orders posted simultaneously and forward them to the ce-operation-hub', (done) ->
+        checklist = new Checklist [
+          'EURBTC'
+          'USDEUR'
+          'BTCUSD'
+        ], done
+        account = state.getAccount 'Peter'
+        balanceEUR = account.getBalance 'EUR'
+        balanceBTC = account.getBalance 'BTC'
+        balanceUSD = account.getBalance 'USD'
+        request
+        .post('/orders/Peter/')
+        .set('Accept', 'application/json')
+        .send
+          bidCurrency: 'EUR'
+          offerCurrency: 'BTC'
           bidPrice: '0.01'
           bidAmount: '5000'
         .expect(200)
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          operation = response.body
-          operation.sequence.should.equal 'BTCEUR'
-          operation.account.should.equal 'Peter'
-          submit = operation.submit
-          submit.bidCurrency.should.equal 'BTC'
-          submit.offerCurrency.should.equal 'EUR'
-          submit.bidPrice.should.equal '0.01'
-          submit.bidAmount.should.equal '5000'
-          checklist.check operation.sequence
+          balanceBTC.lockedFunds.compareTo(new Amount '50').should.equal 0
+          checklist.check 'EURBTC'
         request
         .post('/orders/Peter/')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'USD'
-          offerCurrency: 'BTC'
-          bidPrice: '150'
-          bidAmount: '75'
+          offerCurrency: 'EUR'
+          bidPrice: '0.5'
+          bidAmount: '5000'
         .expect(200)
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          operation = response.body
-          operation.sequence.should.equal 'USDBTC'
-          operation.account.should.equal 'Peter'
-          submit = operation.submit
-          submit.bidCurrency.should.equal 'USD'
-          submit.offerCurrency.should.equal 'BTC'
-          submit.bidPrice.should.equal '150'
-          submit.bidAmount.should.equal '75'
-          checklist.check operation.sequence
+          balanceEUR.lockedFunds.compareTo(new Amount '2500').should.equal 0
+          checklist.check 'USDEUR'
+        request
+        .post('/orders/Peter/')
+        .set('Accept', 'application/json')
+        .send
+          bidCurrency: 'BTC'
+          offerCurrency: 'USD'
+          bidPrice: '50'
+          bidAmount: '25'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          balanceUSD.lockedFunds.compareTo(new Amount '1250').should.equal 0
+          checklist.check 'BTCUSD'
