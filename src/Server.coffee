@@ -47,7 +47,7 @@ module.exports = class Server
     @expressServer.use express.bodyParser()
 
     # expose the HAL browser
-    @expressServer.use '/hal', express.static 'thirdparty/hal-browser'
+    @expressServer.use '/hal', express.static __dirname + '/../thirdparty/hal-browser'
 
     @expressServer.get '/', (request, response) =>
       response.send 200, 'hello'
