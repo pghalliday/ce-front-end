@@ -60,33 +60,14 @@ module.exports = class Server
       response.json 200, @state.getAccount(request.params.account).getBalance(request.params.currency)
 
     @expressServer.post '/deposits/:account/', (request, response) =>
-      reference = uuid.v1()
-      responseHandler = (message) =>
-        parsed = JSON.parse message
-        operation = parsed.operation
-        if operation && operation.reference == reference
-          @ceOperationHub.removeListener 'message', responseHandler
-          response.json 200, parsed
-      @ceOperationHub.on 'message', responseHandler
-      operation = new Operation
-        reference: reference
+      @sendOperation response, new Operation
         account: request.params.account
         deposit:
           currency: request.body.currency
           amount: new Amount request.body.amount
-      @ceOperationHub.send JSON.stringify operation
 
     @expressServer.post '/orders/:account/', (request, response) =>
-      reference = uuid.v1()
-      responseHandler = (message) =>
-        parsed = JSON.parse message
-        operation = parsed.operation
-        if operation && operation.reference == reference
-          @ceOperationHub.removeListener 'message', responseHandler
-          response.json 200, parsed
-      @ceOperationHub.on 'message', responseHandler
-      operation = new Operation
-        reference: reference
+      @sendOperation response, new Operation
         account: request.params.account
         submit: 
           bidCurrency: request.body.bidCurrency
@@ -95,7 +76,18 @@ module.exports = class Server
           bidAmount: if request.body.bidAmount then new Amount request.body.bidAmount
           offerPrice: if request.body.offerPrice then new Amount request.body.offerPrice
           offerAmount: if request.body.offerAmount then new Amount request.body.offerAmount
-      @ceOperationHub.send JSON.stringify operation
+
+  sendOperation: (response, operation) =>
+    reference = uuid.v1()
+    responseHandler = (message) =>
+      parsed = JSON.parse message
+      operation = parsed.operation
+      if operation && operation.reference == reference
+        @ceOperationHub.removeListener 'message', responseHandler
+        response.json 200, parsed
+    @ceOperationHub.on 'message', responseHandler
+    operation.reference = reference
+    @ceOperationHub.send JSON.stringify operation
 
   stop: (callback) =>
     try
