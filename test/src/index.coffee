@@ -26,10 +26,12 @@ applyOperation = (operation) ->
   operation.accept
     sequence: sequence++
     timestamp: Date.now()
-  delta = engine.apply operation
-  state.apply delta
-  ceDeltaHub.stream.send JSON.stringify delta
-  return delta
+  response = 
+    operation: operation
+    delta: engine.apply operation
+  state.apply response.delta
+  ceDeltaHub.stream.send JSON.stringify response.delta
+  return response
 
 describe 'ce-front-end', ->
   it 'should take parameters from a file specified on the command line', (done) ->
@@ -66,9 +68,9 @@ describe 'ce-front-end', ->
         currency: 'BTC'
         amount: new Amount '50'
     ceOperationHub.on 'message', (ref, message) =>
-      delta = applyOperation new Operation
+      response = applyOperation new Operation
         json: message
-      ceOperationHub.send [ref, JSON.stringify delta]
+      ceOperationHub.send [ref, JSON.stringify response]
     ceDeltaHub.state.on 'message', (ref) =>
       # send the state so that the server can finish starting
       ceDeltaHub.state.send [ref, JSON.stringify state]

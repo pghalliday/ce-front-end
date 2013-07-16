@@ -62,11 +62,14 @@ module.exports = class Server
     @expressServer.post '/deposits/:account/', (request, response) =>
       reference = uuid.v1()
       responseHandler = (message) =>
-        delta = new Delta
-          json: message
-        if delta.operation.reference == reference
+        operationResponse = JSON.parse message
+        operationResponse.operation = new Operation
+          exported: operationResponse.operation
+        operationResponse.delta = new Delta
+          exported: operationResponse.delta
+        if operationResponse.delta.operation.reference == reference
           @ceOperationHub.removeListener 'message', responseHandler
-          response.json 200, delta
+          response.json 200, operationResponse
       @ceOperationHub.on 'message', responseHandler
       operation = new Operation
         reference: reference
@@ -79,11 +82,14 @@ module.exports = class Server
     @expressServer.post '/orders/:account/', (request, response) =>
       reference = uuid.v1()
       responseHandler = (message) =>
-        delta = new Delta
-          json: message
-        if delta.operation.reference == reference
+        operationResponse = JSON.parse message
+        operationResponse.operation = new Operation
+          exported: operationResponse.operation
+        operationResponse.delta = new Delta
+          exported: operationResponse.delta
+        if operationResponse.delta.operation.reference == reference
           @ceOperationHub.removeListener 'message', responseHandler
-          response.json 200, delta
+          response.json 200, operationResponse
       @ceOperationHub.on 'message', responseHandler
       operation = new Operation
         reference: reference

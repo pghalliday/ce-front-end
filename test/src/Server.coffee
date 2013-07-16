@@ -29,10 +29,12 @@ applyOperation = (operation) ->
   operation.accept
     sequence: sequence++
     timestamp: Date.now()
-  delta = engine.apply operation
-  state.apply delta
-  ceDeltaHub.stream.send JSON.stringify delta
-  return delta
+  response = 
+    operation: operation
+    delta: engine.apply operation
+  state.apply response.delta
+  ceDeltaHub.stream.send JSON.stringify response.delta
+  return response
 
 describe 'Server', ->
   beforeEach ->
@@ -105,9 +107,9 @@ describe 'Server', ->
         'server started'
       ], done
       ceOperationHub.on 'message', (ref, message) =>
-        delta = applyOperation new Operation
+        response = applyOperation new Operation
           json: message
-        ceOperationHub.send [ref, JSON.stringify delta]
+        ceOperationHub.send [ref, JSON.stringify response]
       ceDeltaHub.state.on 'message', (ref) =>
         args = Array.apply null, arguments
         # publishing some deltas before sending the state
@@ -323,7 +325,7 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           delta = new Delta
-            json: response.text
+            exported: response.body.delta
           balance.funds.compareTo(funds.add(new Amount '50')).should.equal 0
           delta.result.funds.compareTo(balance.funds).should.equal 0
           done()
@@ -349,7 +351,7 @@ describe 'Server', ->
         .end (error, response) =>
           expect(error).to.not.be.ok
           delta = new Delta
-            json: response.text
+            exported: response.body.delta
           balance.lockedFunds.compareTo(new Amount '5000').should.equal 0
           order = orders[delta.operation.sequence]
           order.bidCurrency.should.equal 'BTC'
