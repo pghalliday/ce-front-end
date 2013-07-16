@@ -72,7 +72,12 @@ Query an account's balance in a particular currency
 Response:
 
 ```javascript
-"5000"
+{
+  // Total funds
+  "funds": "5000",
+  // Funds locked up due to being offered in outstanding orders
+  "lockedFunds": "2000"
+}
 ```
 
 #### `POST /deposits/[account]/`
