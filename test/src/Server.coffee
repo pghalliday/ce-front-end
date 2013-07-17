@@ -216,16 +216,6 @@ describe 'Server', ->
       server.stop (error) =>
         done error
 
-
-    describe 'GET /', ->
-      it 'should return the home page', (done) ->
-        request
-        .get('/')
-        .set('Accept', 'text/html')
-        .expect(200)
-        .expect('Content-Type', /html/)
-        .expect 'hello', done
-
     describe 'GET /hal/browser.html', ->
       it 'should serve the HAL browser', (done) ->
         request
@@ -235,17 +225,95 @@ describe 'Server', ->
         .expect('Content-Type', /html/)
         .expect /The HAL Browser/, done
 
-    describe 'GET /balances/[account]/', ->
-      it 'should return an empty object for unknown accounts', (done) ->
+    describe 'GET /', ->
+      it 'should return the root of the hypermedia API', (done) ->
         request
-        .get('/balances/Unknown/')
+        .get('/')
         .set('Accept', 'application/json')
         .expect(200)
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          balances = response.body
-          balances.should.deep.equal Object.create null
+          response.body._links.self.href.should.equal '/'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          response.body._links['ce:accounts'].href.should.equal '/accounts'
+          done()
+
+    describe 'GET /accounts', ->
+      it 'should return the list of accounts', (done) ->
+        checks = []
+        for id of state.accounts
+          checks.push id
+        checklist = new Checklist checks, done
+        request
+        .get('/accounts')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          accounts = response.body._links['ce:account']
+          for account in accounts
+            account.href.should.equal '/accounts/' + account.title
+            checklist.check account.title
+
+    describe 'GET /accounts/:id', ->
+      it 'should return a blank account if no account exists', (done) ->
+        request
+        .get('/accounts/Unknown')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts/Unknown'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          response.body._links['ce:balances'].href.should.equal '/accounts/Unknown/balances'
+          response.body._links['ce:deposits'].href.should.equal '/accounts/Unknown/deposits'
+          response.body._links['ce:withdrawals'].href.should.equal '/accounts/Unknown/withdrawals'
+          response.body._links['ce:orders'].href.should.equal '/accounts/Unknown/orders'
+          done()
+
+      it 'should return an existing account', (done) ->
+        request
+        .get('/accounts/Peter')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts/Peter'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          response.body._links['ce:balances'].href.should.equal '/accounts/Peter/balances'
+          response.body._links['ce:deposits'].href.should.equal '/accounts/Peter/deposits'
+          response.body._links['ce:withdrawals'].href.should.equal '/accounts/Peter/withdrawals'
+          response.body._links['ce:orders'].href.should.equal '/accounts/Peter/orders'
+          done()
+
+    describe 'GET /accounts/:id/balances', ->
+      it 'should return an empty object for unknown accounts', (done) ->
+        request
+        .get('/accounts/Unknown/balances')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts/Unknown/balances'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          expect(response.body._links['ce:balance']).to.not.be.ok
           done()
 
       it 'should return the account balances received from the ce-delta-hub', (done) ->
@@ -253,37 +321,51 @@ describe 'Server', ->
         for id of state.accounts
           checks.push id
         checklist = new Checklist checks, done
-        # can't use for .. in here as it doesn't play nice with closures
+        # can't use for .. of here as it doesn't play nice with closures
         Object.keys(state.accounts).forEach (id) =>
           account = state.accounts[id]
           request
-          .get('/balances/' + id + '/')
+          .get('/accounts/' + id + '/balances')
           .set('Accept', 'application/json')
           .expect(200)
           .expect('Content-Type', /json/)
           .end (error, response) =>
             expect(error).to.not.be.ok
-            balances = response.body
-            for currency, balance of balances
-              balance.funds.should.equal account.balances[currency].funds.toString()
-              balance.lockedFunds.should.equal account.balances[currency].lockedFunds.toString()
-            for currency, balance of account.balances
-              balance.funds.toString().should.equal balances[currency].funds
-              balance.lockedFunds.toString().should.equal balances[currency].lockedFunds
-            checklist.check id
+            response.body._links.self.href.should.equal '/accounts/' + id + '/balances'
+            response.body._links.curie.name.should.equal 'ce'
+            response.body._links.curie.href.should.equal '/rels/{rel}'
+            response.body._links.curie.templated.should.be.true
+            if account.balances.length > 0
+              checks = []
+              for currency of account.balances
+                checks.push currency
+              balancesChecklist = new Checklist checks, (error) =>
+                if error
+                  checklist.check error
+                else
+                  checklist.check id
+              balances = response.body._links['ce:balance']
+              for balance in balances
+                balance.href.should.equal '/accounts/' + id + '/balances/' + balance.title
+                balancesChecklist.check balance.title
+            else
+              checklist.check id
 
-    describe 'GET /balances/[account]/[currency]', ->
-      it 'should return 0 for uninitialised balances', (done) ->
+    describe 'GET /accounts/:id/balances/:currency', ->
+      it 'should return 0 funds and locked funds for uninitialised balances', (done) ->
         request
-        .get('/balances/Unknown/EUR')
+        .get('/accounts/Unknown/balances/EUR')
         .set('Accept', 'application/json')
         .expect(200)
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          balance = response.body
-          balance.funds.should.equal '0'
-          balance.lockedFunds.should.equal '0'
+          response.body._links.self.href.should.equal '/accounts/Unknown/balances/EUR'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          response.body.funds.should.equal '0'
+          response.body.lockedFunds.should.equal '0'
           done()
 
       it 'should return the account balance received from the ce-delta-hub', (done) ->
@@ -299,23 +381,57 @@ describe 'Server', ->
             expectedFunds = account.balances[currency].funds.toString()
             expectedLockedFunds = account.balances[currency].lockedFunds.toString()
             request
-            .get('/balances/' + id + '/' + currency)
+            .get('/accounts/' + id + '/balances/' + currency)
             .set('Accept', 'application/json')
             .expect(200)
             .expect('Content-Type', /json/)
             .end (error, response) =>
               expect(error).to.not.be.ok
-              balance = response.body
-              balance.funds.should.equal expectedFunds
-              balance.lockedFunds.should.equal expectedLockedFunds
+              response.body._links.self.href.should.equal '/accounts/' + id + '/balances/' + currency
+              response.body._links.curie.name.should.equal 'ce'
+              response.body._links.curie.href.should.equal '/rels/{rel}'
+              response.body._links.curie.templated.should.be.true
+              response.body.funds.should.equal expectedFunds
+              response.body.lockedFunds.should.equal expectedLockedFunds
               checklist.check id + currency
 
-    describe 'POST /deposits/[account]/', ->
+    describe 'GET /accounts/:id/deposits', ->
+      it 'should return an empty object for unknown accounts', (done) ->
+        request
+        .get('/accounts/Unknown/deposits')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts/Unknown/deposits'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          expect(response.body._links['ce:deposit']).to.not.be.ok
+          done()
+
+      it.skip 'should return the deposits logged for the account', (done) ->
+        request
+        .get('/accounts/Peter/deposits')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts/Peter/deposits'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          expect(response.body._links['ce:deposit']).to.not.be.ok
+          done()
+
+    describe 'POST /accounts/:id/deposits', ->
       it 'should accept deposits and forward them to the ce-operation-hub', (done) ->
         balance = state.getAccount('Peter').getBalance('EUR')
-        funds = balance.funds
+        expectedFunds = balance.funds.add new Amount '50'
         request
-        .post('/deposits/Peter/')
+        .post('/accounts/Peter/deposits')
         .set('Accept', 'application/json')
         .send
           currency: 'EUR'
@@ -324,13 +440,93 @@ describe 'Server', ->
         .expect('Content-Type', /json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
+          balance.funds.compareTo(expectedFunds).should.equal 0
+          # TODO: actually we should get the new deposit or some kind of error or something
           delta = new Delta
             exported: response.body.delta
-          balance.funds.compareTo(funds.add(new Amount '50')).should.equal 0
-          delta.result.funds.compareTo(balance.funds).should.equal 0
+          delta.result.funds.compareTo(expectedFunds).should.equal 0
+          # TODO: check the balance?
+          # request
+          # .get('/accounts/Peter/balances/EUR')
+          # .set('Accept', 'application/json')
+          # .expect(200)
+          # .expect('Content-Type', /json/)
+          # .end (error, response) =>
+          #   expect(error).to.not.be.ok
+          #   response.body.funds.should.equal balance.funds.toString()
+          #   done()
           done()
 
-    describe 'POST /orders/[account]/', ->
+    describe 'GET /accounts/:id/withdrawals', ->
+      it 'should return an empty object for unknown accounts', (done) ->
+        request
+        .get('/accounts/Unknown/withdrawals')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts/Unknown/withdrawals'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          expect(response.body._links['ce:withdrawal']).to.not.be.ok
+          done()
+
+      it.skip 'should return the withdrawals logged for the account', (done) ->
+        done()
+
+    describe 'POST /accounts/:id/withdrawals', ->
+      it 'should accept withdrawals and forward them to the ce-operation-hub', (done) ->
+        balance = state.getAccount('Peter').getBalance('EUR')
+        expectedFunds = balance.funds.subtract new Amount '50'
+        request
+        .post('/accounts/Peter/withdrawals')
+        .set('Accept', 'application/json')
+        .send
+          currency: 'EUR'
+          amount: '50'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          balance.funds.compareTo(expectedFunds).should.equal 0
+          # TODO: actually we should get the new withdrawal or some kind of error or something
+          delta = new Delta
+            exported: response.body.delta
+          delta.result.funds.compareTo(expectedFunds).should.equal 0
+          # TODO: check the balance?
+          # request
+          # .get('/accounts/Peter/balances/EUR')
+          # .set('Accept', 'application/json')
+          # .expect(200)
+          # .expect('Content-Type', /json/)
+          # .end (error, response) =>
+          #   expect(error).to.not.be.ok
+          #   response.body.funds.should.equal balance.funds.toString()
+          #   done()
+          done()
+
+    describe 'GET /accounts/:id/orders', ->
+      it 'should return an empty object for unknown accounts', (done) ->
+        request
+        .get('/accounts/Unknown/orders')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          response.body._links.self.href.should.equal '/accounts/Unknown/orders'
+          response.body._links.curie.name.should.equal 'ce'
+          response.body._links.curie.href.should.equal '/rels/{rel}'
+          response.body._links.curie.templated.should.be.true
+          expect(response.body._links['ce:order']).to.not.be.ok
+          done()
+
+      it 'should return the currently active orders for the account', (done) ->
+        done()
+
+    describe 'POST /accounts/:id/orders', ->
       it 'should accept orders and forward them to the ce-operation-hub', (done) ->
         account = state.getAccount 'Peter'
         balance = account.getBalance 'EUR'
@@ -339,7 +535,7 @@ describe 'Server', ->
           bidCurrency: 'BTC'
           offerCurrency: 'EUR'
         request
-        .post('/orders/Peter/')
+        .post('/accounts/Peter/orders')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'BTC'
@@ -373,7 +569,7 @@ describe 'Server', ->
         balanceBTC = account.getBalance 'BTC'
         balanceUSD = account.getBalance 'USD'
         request
-        .post('/orders/Peter/')
+        .post('/accounts/Peter/orders')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'EUR'
@@ -387,7 +583,7 @@ describe 'Server', ->
           balanceBTC.lockedFunds.compareTo(new Amount '50').should.equal 0
           checklist.check 'EURBTC'
         request
-        .post('/orders/Peter/')
+        .post('/accounts/Peter/orders')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'USD'
@@ -401,7 +597,7 @@ describe 'Server', ->
           balanceEUR.lockedFunds.compareTo(new Amount '2500').should.equal 0
           checklist.check 'USDEUR'
         request
-        .post('/orders/Peter/')
+        .post('/accounts/Peter/orders')
         .set('Accept', 'application/json')
         .send
           bidCurrency: 'BTC'

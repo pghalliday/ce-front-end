@@ -61,12 +61,6 @@ describe 'ce-front-end', ->
       deposit:
         currency: 'EUR'
         amount: new Amount '5000'
-    applyOperation new Operation
-      reference: 'faaa22e0-e8a8-11e2-91e2-0800200c9a66'
-      account: 'Peter'
-      deposit:
-        currency: 'BTC'
-        amount: new Amount '50'
     ceOperationHub.on 'message', (ref, message) =>
       response = applyOperation new Operation
         json: message
@@ -82,15 +76,13 @@ describe 'ce-front-end', ->
     childDaemon.start (error, matched) =>
       expect(error).to.not.be.ok
       request
-      .get('/balances/Peter/')
+      .get('/accounts/Peter/balances/EUR')
       .set('Accept', 'application/json')
       .expect(200)
       .expect('Content-Type', /json/)
       .end (error, response) =>
         expect(error).to.not.be.ok
-        balances = response.body
-        balances['EUR'].funds.should.equal '5000'
-        balances['BTC'].funds.should.equal '50'
+        response.body.funds.should.equal '5000'
         childDaemon.stop (error) =>
           expect(error).to.not.be.ok
           ceOperationHub.close()

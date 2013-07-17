@@ -2,6 +2,7 @@ http = require 'http'
 express = require 'express'
 zmq = require 'zmq'
 uuid = require 'node-uuid'
+hal = require 'hal'
 
 State = require('currency-market').State
 Delta = require('currency-market').Delta
@@ -50,25 +51,104 @@ module.exports = class Server
     @expressServer.use '/hal', express.static __dirname + '/../thirdparty/hal-browser'
 
     @expressServer.get '/', (request, response) =>
-      response.send 200, 'hello'
+      resource = new hal.Resource {}, '/'
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      resource.link 'ce:accounts', '/accounts'
+      response.json 200, resource
 
-    @expressServer.get '/balances/:account/', (request, response) =>
-      balances = Object.create null
-      response.json 200, @state.getAccount(request.params.account).balances
+    @expressServer.get '/accounts', (request, response) =>
+      resource = new hal.Resource {}, '/accounts'
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      for id, account of @state.accounts
+        resource.link 'ce:account',
+          href: '/accounts/' + id
+          title: id
+      response.json 200, resource
 
-    @expressServer.get '/balances/:account/:currency', (request, response) =>
-      response.json 200, @state.getAccount(request.params.account).getBalance(request.params.currency)
+    @expressServer.get '/accounts/:id', (request, response) =>
+      resource = new hal.Resource {}, '/accounts/' + request.params.id
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      resource.link 'ce:balances', '/accounts/' + request.params.id + '/balances'
+      resource.link 'ce:deposits', '/accounts/' + request.params.id + '/deposits'
+      resource.link 'ce:withdrawals', '/accounts/' + request.params.id + '/withdrawals'
+      resource.link 'ce:orders', '/accounts/' + request.params.id + '/orders'
+      response.json 200, resource
 
-    @expressServer.post '/deposits/:account/', (request, response) =>
+    @expressServer.get '/accounts/:id/balances', (request, response) =>
+      balances = @state.getAccount(request.params.id).balances
+      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/balances'
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      for currency, balance of balances
+        resource.link 'ce:balance',
+          href: '/accounts/' + request.params.id + '/balances/' + currency
+          title: currency
+      response.json 200, resource
+
+    @expressServer.get '/accounts/:id/balances/:currency', (request, response) =>
+      balance = @state.getAccount(request.params.id).getBalance request.params.currency
+      resource = new hal.Resource balance, '/accounts/' + request.params.id + '/balances/' + request.params.currency
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      response.json 200, resource
+
+    @expressServer.get '/accounts/:id/deposits', (request, response) =>
+      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/deposits'
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      # TODO: return logged deposits
+      response.json 200, resource
+
+    @expressServer.post '/accounts/:id/deposits', (request, response) =>
       @sendOperation response, new Operation
-        account: request.params.account
+        account: request.params.id
         deposit:
           currency: request.body.currency
           amount: new Amount request.body.amount
 
-    @expressServer.post '/orders/:account/', (request, response) =>
+    @expressServer.get '/accounts/:id/withdrawals', (request, response) =>
+      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/withdrawals'
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      # TODO: return logged withdrawals
+      response.json 200, resource
+
+    @expressServer.post '/accounts/:id/withdrawals', (request, response) =>
       @sendOperation response, new Operation
-        account: request.params.account
+        account: request.params.id
+        withdraw:
+          currency: request.body.currency
+          amount: new Amount request.body.amount
+
+    @expressServer.get '/accounts/:id/orders', (request, response) =>
+      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/orders'
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      # TODO: return active orders
+      response.json 200, resource
+
+    @expressServer.post '/accounts/:id/orders', (request, response) =>
+      @sendOperation response, new Operation
+        account: request.params.id
         submit: 
           bidCurrency: request.body.bidCurrency
           offerCurrency: request.body.offerCurrency
