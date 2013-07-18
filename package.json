@@ -46,6 +46,6 @@
     "forever": "~0.10.8",
     "nconf": "~0.6.7",
     "currency-market": "~0.4.1",
-    "hal": "~0.1.0"
+    "nor-hal": "0.0.4"
   }
 }

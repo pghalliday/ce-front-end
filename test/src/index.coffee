@@ -77,12 +77,13 @@ describe 'ce-front-end', ->
       expect(error).to.not.be.ok
       request
       .get('/accounts/Peter/balances/EUR')
-      .set('Accept', 'application/json')
+      .set('Accept', 'application/hal+json')
       .expect(200)
-      .expect('Content-Type', /json/)
+      .expect('Content-Type', /hal\+json/)
       .end (error, response) =>
         expect(error).to.not.be.ok
-        response.body.funds.should.equal '5000'
+        halResponse = JSON.parse response.text
+        halResponse.funds.should.equal '5000'
         childDaemon.stop (error) =>
           expect(error).to.not.be.ok
           ceOperationHub.close()

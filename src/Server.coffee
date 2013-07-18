@@ -2,7 +2,7 @@ http = require 'http'
 express = require 'express'
 zmq = require 'zmq'
 uuid = require 'node-uuid'
-hal = require 'hal'
+hal = require 'nor-hal'
 
 State = require('currency-market').State
 Delta = require('currency-market').Delta
@@ -57,6 +57,7 @@ module.exports = class Server
         href: '/rels/{rel}'
         templated: true
       resource.link 'ce:accounts', '/accounts'
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.get '/accounts', (request, response) =>
@@ -69,6 +70,7 @@ module.exports = class Server
         resource.link 'ce:account',
           href: '/accounts/' + id
           title: id
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.get '/accounts/:id', (request, response) =>
@@ -81,6 +83,7 @@ module.exports = class Server
       resource.link 'ce:deposits', '/accounts/' + request.params.id + '/deposits'
       resource.link 'ce:withdrawals', '/accounts/' + request.params.id + '/withdrawals'
       resource.link 'ce:orders', '/accounts/' + request.params.id + '/orders'
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.get '/accounts/:id/balances', (request, response) =>
@@ -90,10 +93,11 @@ module.exports = class Server
         name: 'ce'
         href: '/rels/{rel}'
         templated: true
-      for currency, balance of balances
-        resource.link 'ce:balance',
-          href: '/accounts/' + request.params.id + '/balances/' + currency
-          title: currency
+      links = for currency, balance of balances
+        href: '/accounts/' + request.params.id + '/balances/' + currency
+        title: currency
+      resource.link 'ce:balance', links
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.get '/accounts/:id/balances/:currency', (request, response) =>
@@ -103,6 +107,7 @@ module.exports = class Server
         name: 'ce'
         href: '/rels/{rel}'
         templated: true
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.get '/accounts/:id/deposits', (request, response) =>
@@ -112,6 +117,8 @@ module.exports = class Server
         href: '/rels/{rel}'
         templated: true
       # TODO: return logged deposits
+      resource.link 'ce:deposit', []
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.post '/accounts/:id/deposits', (request, response) =>
@@ -128,6 +135,8 @@ module.exports = class Server
         href: '/rels/{rel}'
         templated: true
       # TODO: return logged withdrawals
+      resource.link 'ce:withdrawal', []
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.post '/accounts/:id/withdrawals', (request, response) =>
@@ -144,6 +153,8 @@ module.exports = class Server
         href: '/rels/{rel}'
         templated: true
       # TODO: return active orders
+      resource.link 'ce:order', []
+      response.type 'application/hal+json'
       response.json 200, resource
 
     @expressServer.post '/accounts/:id/orders', (request, response) =>

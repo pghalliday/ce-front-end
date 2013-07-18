@@ -229,16 +229,17 @@ describe 'Server', ->
       it 'should return the root of the hypermedia API', (done) ->
         request
         .get('/')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          response.body._links['ce:accounts'].href.should.equal '/accounts'
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:accounts'].href.should.equal '/accounts'
           done()
 
     describe 'GET /accounts', ->
@@ -249,16 +250,17 @@ describe 'Server', ->
         checklist = new Checklist checks, done
         request
         .get('/accounts')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          accounts = response.body._links['ce:account']
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          accounts = halResponse._links['ce:account']
           for account in accounts
             account.href.should.equal '/accounts/' + account.title
             checklist.check account.title
@@ -267,53 +269,56 @@ describe 'Server', ->
       it 'should return a blank account if no account exists', (done) ->
         request
         .get('/accounts/Unknown')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Unknown'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          response.body._links['ce:balances'].href.should.equal '/accounts/Unknown/balances'
-          response.body._links['ce:deposits'].href.should.equal '/accounts/Unknown/deposits'
-          response.body._links['ce:withdrawals'].href.should.equal '/accounts/Unknown/withdrawals'
-          response.body._links['ce:orders'].href.should.equal '/accounts/Unknown/orders'
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Unknown'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:balances'].href.should.equal '/accounts/Unknown/balances'
+          halResponse._links['ce:deposits'].href.should.equal '/accounts/Unknown/deposits'
+          halResponse._links['ce:withdrawals'].href.should.equal '/accounts/Unknown/withdrawals'
+          halResponse._links['ce:orders'].href.should.equal '/accounts/Unknown/orders'
           done()
 
       it 'should return an existing account', (done) ->
         request
         .get('/accounts/Peter')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Peter'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          response.body._links['ce:balances'].href.should.equal '/accounts/Peter/balances'
-          response.body._links['ce:deposits'].href.should.equal '/accounts/Peter/deposits'
-          response.body._links['ce:withdrawals'].href.should.equal '/accounts/Peter/withdrawals'
-          response.body._links['ce:orders'].href.should.equal '/accounts/Peter/orders'
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Peter'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:balances'].href.should.equal '/accounts/Peter/balances'
+          halResponse._links['ce:deposits'].href.should.equal '/accounts/Peter/deposits'
+          halResponse._links['ce:withdrawals'].href.should.equal '/accounts/Peter/withdrawals'
+          halResponse._links['ce:orders'].href.should.equal '/accounts/Peter/orders'
           done()
 
     describe 'GET /accounts/:id/balances', ->
       it 'should return an empty object for unknown accounts', (done) ->
         request
         .get('/accounts/Unknown/balances')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Unknown/balances'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          expect(response.body._links['ce:balance']).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Unknown/balances'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:balance'].should.have.length 0
           done()
 
       it 'should return the account balances received from the ce-delta-hub', (done) ->
@@ -326,15 +331,16 @@ describe 'Server', ->
           account = state.accounts[id]
           request
           .get('/accounts/' + id + '/balances')
-          .set('Accept', 'application/json')
+          .set('Accept', 'application/hal+json')
           .expect(200)
-          .expect('Content-Type', /json/)
+          .expect('Content-Type', /hal\+json/)
           .end (error, response) =>
             expect(error).to.not.be.ok
-            response.body._links.self.href.should.equal '/accounts/' + id + '/balances'
-            response.body._links.curie.name.should.equal 'ce'
-            response.body._links.curie.href.should.equal '/rels/{rel}'
-            response.body._links.curie.templated.should.be.true
+            halResponse = JSON.parse response.text
+            halResponse._links.self.href.should.equal '/accounts/' + id + '/balances'
+            halResponse._links.curie.name.should.equal 'ce'
+            halResponse._links.curie.href.should.equal '/rels/{rel}'
+            halResponse._links.curie.templated.should.be.true
             if account.balances.length > 0
               checks = []
               for currency of account.balances
@@ -344,7 +350,7 @@ describe 'Server', ->
                   checklist.check error
                 else
                   checklist.check id
-              balances = response.body._links['ce:balance']
+              balances = halResponse._links['ce:balance']
               for balance in balances
                 balance.href.should.equal '/accounts/' + id + '/balances/' + balance.title
                 balancesChecklist.check balance.title
@@ -355,17 +361,18 @@ describe 'Server', ->
       it 'should return 0 funds and locked funds for uninitialised balances', (done) ->
         request
         .get('/accounts/Unknown/balances/EUR')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Unknown/balances/EUR'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          response.body.funds.should.equal '0'
-          response.body.lockedFunds.should.equal '0'
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Unknown/balances/EUR'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse.funds.should.equal '0'
+          halResponse.lockedFunds.should.equal '0'
           done()
 
       it 'should return the account balance received from the ce-delta-hub', (done) ->
@@ -382,48 +389,51 @@ describe 'Server', ->
             expectedLockedFunds = account.balances[currency].lockedFunds.toString()
             request
             .get('/accounts/' + id + '/balances/' + currency)
-            .set('Accept', 'application/json')
+            .set('Accept', 'application/hal+json')
             .expect(200)
-            .expect('Content-Type', /json/)
+            .expect('Content-Type', /hal\+json/)
             .end (error, response) =>
               expect(error).to.not.be.ok
-              response.body._links.self.href.should.equal '/accounts/' + id + '/balances/' + currency
-              response.body._links.curie.name.should.equal 'ce'
-              response.body._links.curie.href.should.equal '/rels/{rel}'
-              response.body._links.curie.templated.should.be.true
-              response.body.funds.should.equal expectedFunds
-              response.body.lockedFunds.should.equal expectedLockedFunds
+              halResponse = JSON.parse response.text
+              halResponse._links.self.href.should.equal '/accounts/' + id + '/balances/' + currency
+              halResponse._links.curie.name.should.equal 'ce'
+              halResponse._links.curie.href.should.equal '/rels/{rel}'
+              halResponse._links.curie.templated.should.be.true
+              halResponse.funds.should.equal expectedFunds
+              halResponse.lockedFunds.should.equal expectedLockedFunds
               checklist.check id + currency
 
     describe 'GET /accounts/:id/deposits', ->
       it 'should return an empty object for unknown accounts', (done) ->
         request
         .get('/accounts/Unknown/deposits')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Unknown/deposits'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          expect(response.body._links['ce:deposit']).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Unknown/deposits'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:deposit'].should.have.length 0
           done()
 
       it.skip 'should return the deposits logged for the account', (done) ->
         request
         .get('/accounts/Peter/deposits')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Peter/deposits'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          expect(response.body._links['ce:deposit']).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Peter/deposits'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:deposit'].should.have.length 0
           done()
 
     describe 'POST /accounts/:id/deposits', ->
@@ -461,20 +471,34 @@ describe 'Server', ->
       it 'should return an empty object for unknown accounts', (done) ->
         request
         .get('/accounts/Unknown/withdrawals')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Unknown/withdrawals'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          expect(response.body._links['ce:withdrawal']).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Unknown/withdrawals'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:withdrawal'].should.have.length 0
           done()
 
       it.skip 'should return the withdrawals logged for the account', (done) ->
-        done()
+        request
+        .get('/accounts/Peter/withdrawals')
+        .set('Accept', 'application/hal+json')
+        .expect(200)
+        .expect('Content-Type', /hal\+json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Peter/withdrawals'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:withdrawal'].should.have.length 0
+          done()
 
     describe 'POST /accounts/:id/withdrawals', ->
       it 'should accept withdrawals and forward them to the ce-operation-hub', (done) ->
@@ -511,20 +535,34 @@ describe 'Server', ->
       it 'should return an empty object for unknown accounts', (done) ->
         request
         .get('/accounts/Unknown/orders')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          response.body._links.self.href.should.equal '/accounts/Unknown/orders'
-          response.body._links.curie.name.should.equal 'ce'
-          response.body._links.curie.href.should.equal '/rels/{rel}'
-          response.body._links.curie.templated.should.be.true
-          expect(response.body._links['ce:order']).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Unknown/orders'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:order'].should.have.length 0
           done()
 
       it 'should return the currently active orders for the account', (done) ->
-        done()
+        request
+        .get('/accounts/Peter/orders')
+        .set('Accept', 'application/hal+json')
+        .expect(200)
+        .expect('Content-Type', /hal\+json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Peter/orders'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:order'].should.have.length 0
+          done()
 
     describe 'POST /accounts/:id/orders', ->
       it 'should accept orders and forward them to the ce-operation-hub', (done) ->
