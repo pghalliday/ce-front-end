@@ -20,12 +20,23 @@ module.exports = class Server
       state: zmq.socket 'dealer'
     @ceDeltaHub.stream.subscribe ''
     @deltas = []
+    @outstanding = {}
+
+    @ceOperationHub.on 'message', (message) =>
+      response = JSON.parse message
+      if response.error
+        operation = response.operation
+        if operation
+          outstanding = @outstanding[operation.reference]
+          if outstanding
+            delete @outstanding[operation.reference]
+            outstanding.response.json 200, response
 
     @ceDeltaHub.stream.on 'message', (message) =>
       delta = new Delta
         json: message
       if @state
-        @state.apply delta
+        @applyDelta delta
       else
         @deltas.push delta
 
@@ -35,7 +46,7 @@ module.exports = class Server
         commission: @options.commission
         json: message
       @deltas.forEach (delta) =>
-        @state.apply delta
+        @applyDelta delta
       if firstState
         @httpServer.listen @options.port, @startCallback
 
@@ -110,6 +121,13 @@ module.exports = class Server
       response.type 'application/hal+json'
       response.json 200, resource
 
+    @expressServer.post '/accounts/:id/deposits', (request, response) =>
+      @sendOperation response, new Operation
+        account: request.params.id
+        deposit:
+          currency: request.body.currency
+          amount: new Amount request.body.amount
+
     @expressServer.get '/accounts/:id/deposits', (request, response) =>
       resource = new hal.Resource {}, '/accounts/' + request.params.id + '/deposits'
       resource.link 'curie', 
@@ -121,10 +139,10 @@ module.exports = class Server
       response.type 'application/hal+json'
       response.json 200, resource
 
-    @expressServer.post '/accounts/:id/deposits', (request, response) =>
+    @expressServer.post '/accounts/:id/withdrawals', (request, response) =>
       @sendOperation response, new Operation
         account: request.params.id
-        deposit:
+        withdraw:
           currency: request.body.currency
           amount: new Amount request.body.amount
 
@@ -139,24 +157,6 @@ module.exports = class Server
       response.type 'application/hal+json'
       response.json 200, resource
 
-    @expressServer.post '/accounts/:id/withdrawals', (request, response) =>
-      @sendOperation response, new Operation
-        account: request.params.id
-        withdraw:
-          currency: request.body.currency
-          amount: new Amount request.body.amount
-
-    @expressServer.get '/accounts/:id/orders', (request, response) =>
-      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/orders'
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      # TODO: return active orders
-      resource.link 'ce:order', []
-      response.type 'application/hal+json'
-      response.json 200, resource
-
     @expressServer.post '/accounts/:id/orders', (request, response) =>
       @sendOperation response, new Operation
         account: request.params.id
@@ -168,16 +168,33 @@ module.exports = class Server
           offerPrice: if request.body.offerPrice then new Amount request.body.offerPrice
           offerAmount: if request.body.offerAmount then new Amount request.body.offerAmount
 
+    @expressServer.get '/accounts/:id/orders', (request, response) =>
+      orders = @state.getAccount(request.params.id).orders
+      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/orders'
+      resource.link 'curie', 
+        name: 'ce'
+        href: '/rels/{rel}'
+        templated: true
+      orders = for sequence, order of orders
+        href: '/accounts/' + request.params.id + '/orders/' + sequence
+        title: sequence
+      resource.link 'ce:order', orders
+      response.type 'application/hal+json'
+      response.json 200, resource
+
+  applyDelta: (delta) =>
+    @state.apply delta
+    operation = delta.operation
+    outstanding = @outstanding[operation.reference]
+    if outstanding
+      delete @outstanding[operation.reference]
+      outstanding.response.json 200, delta
+
   sendOperation: (response, operation) =>
     reference = uuid.v1()
-    responseHandler = (message) =>
-      parsed = JSON.parse message
-      operation = parsed.operation
-      if operation && operation.reference == reference
-        @ceOperationHub.removeListener 'message', responseHandler
-        response.json 200, parsed
-    @ceOperationHub.on 'message', responseHandler
     operation.reference = reference
+    @outstanding[reference] = 
+      response: response
     @ceOperationHub.send JSON.stringify operation
 
   stop: (callback) =>
