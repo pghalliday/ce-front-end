@@ -727,4 +727,224 @@ describe 'Server', ->
                 halResponse._links.curie.href.should.equal '/rels/{rel}'
                 halResponse._links.curie.templated.should.be.true
                 halResponse._links['ce:order'].should.have.length 3
+                for order, index in halResponse._links['ce:order']
+                  order.href.should.equal '/accounts/Peter/orders/' + order.title
+                  order.title.should.equal '' + (index + 14)
                 done()
+
+    describe 'GET /accounts/:id/orders/:sequence', ->
+      it 'should return 404 error for unknown orders', (done) ->
+        request
+        .get('/accounts/Peter/orders/1234165')
+        .set('Accept', 'application/hal+json')
+        .expect 404, done
+
+      it 'should return the order details', (done) ->
+        request
+        .post('/accounts/Peter/orders')
+        .set('Accept', 'application/json')
+        .send
+          bidCurrency: 'EUR'
+          offerCurrency: 'BTC'
+          bidPrice: '0.01'
+          bidAmount: '5000'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          delta = new Delta
+            exported: response.body
+          request
+          .get('/accounts/Peter/orders/' + delta.operation.sequence)
+          .set('Accept', 'application/hal+json')
+          .expect(200)
+          .expect('Content-Type', /hal\+json/)
+          .end (error, response) =>
+            expect(error).to.not.be.ok
+            halResponse = JSON.parse response.text
+            halResponse._links.self.href.should.equal '/accounts/Peter/orders/' + delta.operation.sequence
+            halResponse._links.curie.name.should.equal 'ce'
+            halResponse._links.curie.href.should.equal '/rels/{rel}'
+            halResponse._links.curie.templated.should.be.true
+            halResponse.sequence.should.equal delta.operation.sequence
+            halResponse.timestamp.should.be.a 'number'
+            halResponse.account.should.equal 'Peter'
+            halResponse.bidCurrency.should.equal 'EUR'
+            halResponse.offerCurrency.should.equal 'BTC'
+            halResponse.bidPrice.should.equal '0.01'
+            halResponse.bidAmount.should.equal '5000'
+            done()
+
+    describe 'DELETE /accounts/:id/orders/:sequence', ->
+      it 'should send a cancel operation to the operation hub and return the engine error if the order does not exist', (done) ->
+        request
+        .del('/accounts/Peter/orders/1234165')
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          response.body.error.should.equal 'Error: Order cannot be found'
+          done()
+
+      it 'should send a cancel operation to the operation hub', (done) ->
+        account = state.getAccount 'Peter'
+        balance = account.getBalance 'EUR'
+        orders = account.orders
+        book = state.getBook
+          bidCurrency: 'BTC'
+          offerCurrency: 'EUR'
+        request
+        .post('/accounts/Peter/orders')
+        .set('Accept', 'application/json')
+        .send
+          bidCurrency: 'BTC'
+          offerCurrency: 'EUR'
+          bidPrice: '100'
+          bidAmount: '50'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          delta = new Delta
+            exported: response.body
+          request
+          .del('/accounts/Peter/orders/' + delta.operation.sequence)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect('Content-Type', /json/)
+          .end (error, response) =>
+            expect(error).to.not.be.ok
+            delta = new Delta
+              exported: response.body
+            balance.lockedFunds.compareTo(Amount.ZERO).should.equal 0
+            expect(orders[delta.operation.cancel.sequence]).to.not.be.ok
+            expect(book[0]).to.not.be.ok
+            delta.result.lockedFunds.compareTo(Amount.ZERO).should.equal 0
+            done()
+
+    describe 'POST /books/:bidCurrency/:offerCurrency', ->
+      it 'should accept orders and forward them to the ce-operation-hub', (done) ->
+        account = state.getAccount 'Peter'
+        balance = account.getBalance 'EUR'
+        orders = account.orders
+        book = state.getBook
+          bidCurrency: 'BTC'
+          offerCurrency: 'EUR'
+        request
+        .post('/books/BTC/EUR')
+        .set('Accept', 'application/json')
+        .send
+          account: 'Peter'
+          bidPrice: '100'
+          bidAmount: '50'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          delta = new Delta
+            exported: response.body
+          balance.lockedFunds.compareTo(new Amount '5000').should.equal 0
+          order = orders[delta.operation.sequence]
+          order.bidCurrency.should.equal 'BTC'
+          order.offerCurrency.should.equal 'EUR'
+          order.bidPrice.compareTo(new Amount '100').should.equal 0
+          order.bidAmount.compareTo(new Amount '50').should.equal 0
+          order.account.should.equal 'Peter'
+          book[0].should.equal order
+          done()
+
+    describe 'GET /books/:bidCurrency/:offerCurrency', ->
+      it 'should return an empty list of orders for an unknown book', (done) ->
+        request
+        .get('/books/Unknown/Unknown')
+        .set('Accept', 'application/hal+json')
+        .expect(200)
+        .expect('Content-Type', /hal\+json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/books/Unknown/Unknown'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:order'].should.have.length 0
+          done()
+
+      it 'should return a list of orders for a book', (done) ->
+        request
+        .post('/books/BTC/EUR')
+        .set('Accept', 'application/json')
+        .send
+          account: 'Peter'
+          bidPrice: '0.01'
+          bidAmount: '5000'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          request
+          .post('/books/BTC/EUR')
+          .set('Accept', 'application/json')
+          .send
+            account: 'Tom'
+            offerPrice: '0.01'
+            offerAmount: '2500'
+          .expect(200)
+          .expect('Content-Type', /json/)
+          .end (error, response) =>
+            request
+            .get('/books/BTC/EUR')
+            .set('Accept', 'application/hal+json')
+            .expect(200)
+            .expect('Content-Type', /hal\+json/)
+            .end (error, response) =>
+              expect(error).to.not.be.ok
+              halResponse = JSON.parse response.text
+              halResponse._links.self.href.should.equal '/books/BTC/EUR'
+              halResponse._links.curie.name.should.equal 'ce'
+              halResponse._links.curie.href.should.equal '/rels/{rel}'
+              halResponse._links.curie.templated.should.be.true
+              halResponse._links['ce:order'].should.have.length 2
+              for order, index in halResponse._links['ce:order']
+                order.href.should.equal '/books/BTC/EUR/' + index
+                order.title.should.equal '' + index
+              done()
+
+    describe 'GET /books/:bidCurrency/:offerCurrency/:index', ->
+      it 'should return 404 error for unknown indices', (done) ->
+        request
+        .get('/books/BTC/EUR/1234165')
+        .set('Accept', 'application/hal+json')
+        .expect 404, done
+
+      it 'should return the order details', (done) ->
+        request
+        .post('/accounts/Peter/orders')
+        .set('Accept', 'application/json')
+        .send
+          bidCurrency: 'EUR'
+          offerCurrency: 'BTC'
+          bidPrice: '0.01'
+          bidAmount: '5000'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          delta = new Delta
+            exported: response.body
+          request
+          .get('/books/EUR/BTC/0')
+          .set('Accept', 'application/hal+json')
+          .expect(200)
+          .expect('Content-Type', /hal\+json/)
+          .end (error, response) =>
+            expect(error).to.not.be.ok
+            halResponse = JSON.parse response.text
+            halResponse._links.self.href.should.equal '/books/EUR/BTC/0'
+            halResponse._links.curie.name.should.equal 'ce'
+            halResponse._links.curie.href.should.equal '/rels/{rel}'
+            halResponse._links.curie.templated.should.be.true
+            halResponse.sequence.should.equal delta.operation.sequence
+            halResponse.timestamp.should.be.a 'number'
+            halResponse.account.should.equal 'Peter'
+            halResponse.bidCurrency.should.equal 'EUR'
+            halResponse.offerCurrency.should.equal 'BTC'
+            halResponse.bidPrice.should.equal '0.01'
+            halResponse.bidAmount.should.equal '5000'
+            done()              

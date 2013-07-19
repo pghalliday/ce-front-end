@@ -9,6 +9,13 @@ Delta = require('currency-market').Delta
 Operation = require('currency-market').Operation
 Amount = require('currency-market').Amount
 
+newHalResource = (object, self) ->
+  resource = new hal.Resource object, self
+  resource.link 'curie', 
+    name: 'ce'
+    href: '/rels/{rel}'
+    templated: true
+
 module.exports = class Server
   constructor: (@options) ->
     @connections = []
@@ -62,64 +69,42 @@ module.exports = class Server
     @expressServer.use '/hal', express.static __dirname + '/../thirdparty/hal-browser'
 
     @expressServer.get '/', (request, response) =>
-      resource = new hal.Resource {}, '/'
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      resource.link 'ce:accounts', '/accounts'
       response.type 'application/hal+json'
-      response.json 200, resource
+      response.json 200,
+        newHalResource({}, '/')
+        .link('ce:accounts', '/accounts')
 
     @expressServer.get '/accounts', (request, response) =>
-      resource = new hal.Resource {}, '/accounts'
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      for id, account of @state.accounts
-        resource.link 'ce:account',
-          href: '/accounts/' + id
-          title: id
       response.type 'application/hal+json'
-      response.json 200, resource
+      accounts = for id, account of @state.accounts
+        href: '/accounts/' + id
+        title: id
+      response.json 200,
+        newHalResource({}, '/accounts')
+        .link('ce:account', accounts)
 
     @expressServer.get '/accounts/:id', (request, response) =>
-      resource = new hal.Resource {}, '/accounts/' + request.params.id
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      resource.link 'ce:balances', '/accounts/' + request.params.id + '/balances'
-      resource.link 'ce:deposits', '/accounts/' + request.params.id + '/deposits'
-      resource.link 'ce:withdrawals', '/accounts/' + request.params.id + '/withdrawals'
-      resource.link 'ce:orders', '/accounts/' + request.params.id + '/orders'
       response.type 'application/hal+json'
-      response.json 200, resource
+      response.json 200,
+        newHalResource({}, '/accounts/' + request.params.id)
+        .link('ce:balances', '/accounts/' + request.params.id + '/balances')
+        .link('ce:deposits', '/accounts/' + request.params.id + '/deposits')
+        .link('ce:withdrawals', '/accounts/' + request.params.id + '/withdrawals')
+        .link('ce:orders', '/accounts/' + request.params.id + '/orders')
 
     @expressServer.get '/accounts/:id/balances', (request, response) =>
-      balances = @state.getAccount(request.params.id).balances
-      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/balances'
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      links = for currency, balance of balances
+      response.type 'application/hal+json'
+      balances = for currency, balance of @state.getAccount(request.params.id).balances
         href: '/accounts/' + request.params.id + '/balances/' + currency
         title: currency
-      resource.link 'ce:balance', links
-      response.type 'application/hal+json'
-      response.json 200, resource
+      response.json 200,
+        newHalResource({}, '/accounts/' + request.params.id + '/balances')
+        .link('ce:balance', balances)
 
     @expressServer.get '/accounts/:id/balances/:currency', (request, response) =>
-      balance = @state.getAccount(request.params.id).getBalance request.params.currency
-      resource = new hal.Resource balance, '/accounts/' + request.params.id + '/balances/' + request.params.currency
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
       response.type 'application/hal+json'
-      response.json 200, resource
+      response.json 200,
+        newHalResource @state.getAccount(request.params.id).getBalance(request.params.currency), '/accounts/' + request.params.id + '/balances/' + request.params.currency
 
     @expressServer.post '/accounts/:id/deposits', (request, response) =>
       @sendOperation response, new Operation
@@ -129,15 +114,11 @@ module.exports = class Server
           amount: new Amount request.body.amount
 
     @expressServer.get '/accounts/:id/deposits', (request, response) =>
-      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/deposits'
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      # TODO: return logged deposits
-      resource.link 'ce:deposit', []
       response.type 'application/hal+json'
-      response.json 200, resource
+      # TODO: return logged deposits
+      response.json 200,
+        newHalResource({}, '/accounts/' + request.params.id + '/deposits')
+        .link('ce:deposit', [])
 
     @expressServer.post '/accounts/:id/withdrawals', (request, response) =>
       @sendOperation response, new Operation
@@ -147,15 +128,11 @@ module.exports = class Server
           amount: new Amount request.body.amount
 
     @expressServer.get '/accounts/:id/withdrawals', (request, response) =>
-      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/withdrawals'
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      # TODO: return logged withdrawals
-      resource.link 'ce:withdrawal', []
       response.type 'application/hal+json'
-      response.json 200, resource
+      # TODO: return logged withdrawals
+      response.json 200,
+        newHalResource({}, '/accounts/' + request.params.id + '/withdrawals')
+        .link('ce:withdrawal', [])
 
     @expressServer.post '/accounts/:id/orders', (request, response) =>
       @sendOperation response, new Operation
@@ -169,18 +146,63 @@ module.exports = class Server
           offerAmount: if request.body.offerAmount then new Amount request.body.offerAmount
 
     @expressServer.get '/accounts/:id/orders', (request, response) =>
-      orders = @state.getAccount(request.params.id).orders
-      resource = new hal.Resource {}, '/accounts/' + request.params.id + '/orders'
-      resource.link 'curie', 
-        name: 'ce'
-        href: '/rels/{rel}'
-        templated: true
-      orders = for sequence, order of orders
+      response.type 'application/hal+json'
+      orders = for sequence, order of @state.getAccount(request.params.id).orders
         href: '/accounts/' + request.params.id + '/orders/' + sequence
         title: sequence
-      resource.link 'ce:order', orders
+      response.json 200,
+        newHalResource({}, '/accounts/' + request.params.id + '/orders')
+        .link('ce:order', orders)
+
+    @expressServer.get '/accounts/:id/orders/:sequence', (request, response) =>
+      order = @state.getAccount(request.params.id).orders[request.params.sequence]
+      if order
+        response.type 'application/hal+json'
+        response.json 200,
+          newHalResource order, '/accounts/' + request.params.id + '/orders/' + request.params.sequence
+      else
+        response.send 404
+
+    @expressServer.delete '/accounts/:id/orders/:sequence', (request, response) =>
+      @sendOperation response, new Operation
+        account: request.params.id
+        cancel: 
+          sequence: parseInt request.params.sequence
+
+    @expressServer.post '/books/:bidCurrency/:offerCurrency', (request, response) =>
+      @sendOperation response, new Operation
+        account: request.body.account
+        submit: 
+          bidCurrency: request.params.bidCurrency
+          offerCurrency: request.params.offerCurrency
+          bidPrice: if request.body.bidPrice then new Amount request.body.bidPrice
+          bidAmount: if request.body.bidAmount then new Amount request.body.bidAmount
+          offerPrice: if request.body.offerPrice then new Amount request.body.offerPrice
+          offerAmount: if request.body.offerAmount then new Amount request.body.offerAmount
+
+    @expressServer.get '/books/:bidCurrency/:offerCurrency', (request, response) =>
       response.type 'application/hal+json'
-      response.json 200, resource
+      orders = @state.getBook
+        bidCurrency: request.params.bidCurrency
+        offerCurrency: request.params.offerCurrency
+      orders = for order, index in orders
+        href: '/books/' + request.params.bidCurrency + '/' + request.params.offerCurrency + '/' + index
+        title: index
+      response.json 200,
+        newHalResource({}, '/books/' + request.params.bidCurrency + '/' + request.params.offerCurrency)
+        .link('ce:order', orders)
+
+    @expressServer.get '/books/:bidCurrency/:offerCurrency/:index', (request, response) =>
+      orders = @state.getBook
+        bidCurrency: request.params.bidCurrency
+        offerCurrency: request.params.offerCurrency
+      order = orders[request.params.index]
+      if order
+        response.type 'application/hal+json'
+        response.json 200,
+          newHalResource order, '/books/' + request.params.bidCurrency + '/' + request.params.offerCurrency + '/' + request.params.index
+      else
+        response.send 404
 
   applyDelta: (delta) =>
     @state.apply delta
