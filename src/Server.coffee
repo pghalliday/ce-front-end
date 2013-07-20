@@ -73,10 +73,11 @@ module.exports = class Server
       response.json 200,
         newHalResource({}, '/')
         .link('ce:accounts', '/accounts')
+        .link('ce:books', '/books')
 
     @expressServer.get '/accounts', (request, response) =>
       response.type 'application/hal+json'
-      accounts = for id, account of @state.accounts
+      accounts = for id of @state.accounts
         href: '/accounts/' + id
         title: id
       response.json 200,
@@ -94,7 +95,7 @@ module.exports = class Server
 
     @expressServer.get '/accounts/:id/balances', (request, response) =>
       response.type 'application/hal+json'
-      balances = for currency, balance of @state.getAccount(request.params.id).balances
+      balances = for currency of @state.getAccount(request.params.id).balances
         href: '/accounts/' + request.params.id + '/balances/' + currency
         title: currency
       response.json 200,
@@ -147,7 +148,7 @@ module.exports = class Server
 
     @expressServer.get '/accounts/:id/orders', (request, response) =>
       response.type 'application/hal+json'
-      orders = for sequence, order of @state.getAccount(request.params.id).orders
+      orders = for sequence of @state.getAccount(request.params.id).orders
         href: '/accounts/' + request.params.id + '/orders/' + sequence
         title: sequence
       response.json 200,
@@ -169,6 +170,24 @@ module.exports = class Server
         cancel: 
           sequence: parseInt request.params.sequence
 
+    @expressServer.get '/books', (request, response) =>
+      response.type 'application/hal+json'
+      booksByBidCurrency = for currency of @state.books
+        href: '/books/' + currency
+        title: currency
+      response.json 200,
+        newHalResource({}, '/books')
+        .link('ce:books-by-bid-currency', booksByBidCurrency)
+
+    @expressServer.get '/books/:bidCurrency', (request, response) =>
+      response.type 'application/hal+json'
+      booksByOfferCurrency = for currency of @state.getBooks request.params.bidCurrency
+        href: '/books/' + request.params.bidCurrency + '/' + currency
+        title: currency
+      response.json 200,
+        newHalResource({}, '/books/' + request.params.bidCurrency)
+        .link('ce:book', booksByOfferCurrency)
+
     @expressServer.post '/books/:bidCurrency/:offerCurrency', (request, response) =>
       @sendOperation response, new Operation
         account: request.body.account
@@ -185,12 +204,12 @@ module.exports = class Server
       orders = @state.getBook
         bidCurrency: request.params.bidCurrency
         offerCurrency: request.params.offerCurrency
-      orders = for order, index in orders
+      orders = for index of orders
         href: '/books/' + request.params.bidCurrency + '/' + request.params.offerCurrency + '/' + index
         title: index
       response.json 200,
         newHalResource({}, '/books/' + request.params.bidCurrency + '/' + request.params.offerCurrency)
-        .link('ce:order', orders)
+        .link('ce:order-by-book', orders)
 
     @expressServer.get '/books/:bidCurrency/:offerCurrency/:index', (request, response) =>
       orders = @state.getBook

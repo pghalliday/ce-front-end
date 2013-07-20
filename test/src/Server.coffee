@@ -243,13 +243,13 @@ describe 'Server', ->
           halResponse._links.curie.href.should.equal '/rels/{rel}'
           halResponse._links.curie.templated.should.be.true
           halResponse._links['ce:accounts'].href.should.equal '/accounts'
+          halResponse._links['ce:books'].href.should.equal '/books'
           done()
 
     describe 'GET /accounts', ->
       it 'should return the list of accounts', (done) ->
-        checks = []
-        for id of state.accounts
-          checks.push id
+        checks = for id of state.accounts
+          id
         checklist = new Checklist checks, done
         request
         .get('/accounts')
@@ -471,9 +471,8 @@ describe 'Server', ->
           done()
 
       it 'should return the account balances received from the ce-delta-hub', (done) ->
-        checks = []
-        for id of state.accounts
-          checks.push id
+        checks = for id of state.accounts
+          id
         checklist = new Checklist checks, done
         # can't use for .. of here as it doesn't play nice with closures
         Object.keys(state.accounts).forEach (id) =>
@@ -820,6 +819,151 @@ describe 'Server', ->
             delta.result.lockedFunds.compareTo(Amount.ZERO).should.equal 0
             done()
 
+    describe 'GET /books', ->
+      it 'should return an empty list if no books exist', (done) ->
+        request
+        .get('/books')
+        .set('Accept', 'application/hal+json')
+        .expect(200)
+        .expect('Content-Type', /hal\+json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/books'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:books-by-bid-currency'].should.have.length 0
+          done()
+
+      it 'should return the list of collections of books by bid currency', (done) ->
+        request
+        .post('/accounts/Peter/orders')
+        .set('Accept', 'application/json')
+        .send
+          bidCurrency: 'EUR'
+          offerCurrency: 'BTC'
+          bidPrice: '0.01'
+          bidAmount: '5000'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          request
+          .post('/accounts/Peter/orders')
+          .set('Accept', 'application/json')
+          .send
+            bidCurrency: 'USD'
+            offerCurrency: 'EUR'
+            bidPrice: '0.5'
+            bidAmount: '5000'
+          .expect(200)
+          .expect('Content-Type', /json/)
+          .end (error, response) =>
+            request
+            .post('/accounts/Peter/orders')
+            .set('Accept', 'application/json')
+            .send
+              bidCurrency: 'BTC'
+              offerCurrency: 'USD'
+              bidPrice: '50'
+              bidAmount: '25'
+            .expect(200)
+            .expect('Content-Type', /json/)
+            .end (error, response) =>
+              checks = for currency of state.books
+                currency
+              checks.should.have.length 3
+              checklist = new Checklist checks, done
+              request
+              .get('/books')
+              .set('Accept', 'application/hal+json')
+              .expect(200)
+              .expect('Content-Type', /hal\+json/)
+              .end (error, response) =>
+                expect(error).to.not.be.ok
+                halResponse = JSON.parse response.text
+                halResponse._links.self.href.should.equal '/books'
+                halResponse._links.curie.name.should.equal 'ce'
+                halResponse._links.curie.href.should.equal '/rels/{rel}'
+                halResponse._links.curie.templated.should.be.true
+                booksByBidCurrency = halResponse._links['ce:books-by-bid-currency']
+                for books in booksByBidCurrency
+                  books.href.should.equal '/books/' + books.title
+                  checklist.check books.title
+
+    describe 'GET /books/:bidCurrency', ->
+      it 'should return an empty list if no books exist', (done) ->
+        request
+        .get('/books/EUR')
+        .set('Accept', 'application/hal+json')
+        .expect(200)
+        .expect('Content-Type', /hal\+json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/books/EUR'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:book'].should.have.length 0
+          done()
+
+      it 'should return the list of collections of books by bid currency', (done) ->
+        request
+        .post('/accounts/Peter/orders')
+        .set('Accept', 'application/json')
+        .send
+          bidCurrency: 'GBP'
+          offerCurrency: 'BTC'
+          bidPrice: '0.01'
+          bidAmount: '5000'
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end (error, response) =>
+          request
+          .post('/accounts/Peter/orders')
+          .set('Accept', 'application/json')
+          .send
+            bidCurrency: 'GBP'
+            offerCurrency: 'EUR'
+            bidPrice: '0.5'
+            bidAmount: '5000'
+          .expect(200)
+          .expect('Content-Type', /json/)
+          .end (error, response) =>
+            request
+            .post('/accounts/Peter/orders')
+            .set('Accept', 'application/json')
+            .send
+              bidCurrency: 'GBP'
+              offerCurrency: 'USD'
+              bidPrice: '50'
+              bidAmount: '25'
+            .expect(200)
+            .expect('Content-Type', /json/)
+            .end (error, response) =>
+              books = state.getBooks 'GBP'
+              checks = for currency of books
+                currency
+              checks.should.have.length 3
+              checklist = new Checklist checks, done
+              request
+              .get('/books/GBP')
+              .set('Accept', 'application/hal+json')
+              .expect(200)
+              .expect('Content-Type', /hal\+json/)
+              .end (error, response) =>
+                expect(error).to.not.be.ok
+                halResponse = JSON.parse response.text
+                halResponse._links.self.href.should.equal '/books/GBP'
+                halResponse._links.curie.name.should.equal 'ce'
+                halResponse._links.curie.href.should.equal '/rels/{rel}'
+                halResponse._links.curie.templated.should.be.true
+                booksByOfferCurrency = halResponse._links['ce:book']
+                for books in booksByOfferCurrency
+                  books.href.should.equal '/books/GBP/' + books.title
+                  checklist.check books.title
+
     describe 'POST /books/:bidCurrency/:offerCurrency', ->
       it 'should accept orders and forward them to the ce-operation-hub', (done) ->
         account = state.getAccount 'Peter'
@@ -865,7 +1009,7 @@ describe 'Server', ->
           halResponse._links.curie.name.should.equal 'ce'
           halResponse._links.curie.href.should.equal '/rels/{rel}'
           halResponse._links.curie.templated.should.be.true
-          halResponse._links['ce:order'].should.have.length 0
+          halResponse._links['ce:order-by-book'].should.have.length 0
           done()
 
       it 'should return a list of orders for a book', (done) ->
@@ -901,8 +1045,8 @@ describe 'Server', ->
               halResponse._links.curie.name.should.equal 'ce'
               halResponse._links.curie.href.should.equal '/rels/{rel}'
               halResponse._links.curie.templated.should.be.true
-              halResponse._links['ce:order'].should.have.length 2
-              for order, index in halResponse._links['ce:order']
+              halResponse._links['ce:order-by-book'].should.have.length 2
+              for order, index in halResponse._links['ce:order-by-book']
                 order.href.should.equal '/books/BTC/EUR/' + index
                 order.title.should.equal '' + index
               done()
