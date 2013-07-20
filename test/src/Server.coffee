@@ -246,6 +246,15 @@ describe 'Server', ->
           halResponse._links['ce:books'].href.should.equal '/books'
           done()
 
+    describe 'GET /rels/accounts', ->
+      it 'should return the accounts relationship documentation', (done) ->
+        request
+        .get('/rels/accounts')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect /ce:accounts/, done
+
     describe 'GET /accounts', ->
       it 'should return the list of accounts', (done) ->
         checks = for id of state.accounts

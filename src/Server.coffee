@@ -75,6 +75,9 @@ module.exports = class Server
         .link('ce:accounts', '/accounts')
         .link('ce:books', '/books')
 
+    @expressServer.get '/rels/accounts', (request, response) =>
+      response.send 200, 'ce:accounts'
+
     @expressServer.get '/accounts', (request, response) =>
       response.type 'application/hal+json'
       accounts = for id of @state.accounts
