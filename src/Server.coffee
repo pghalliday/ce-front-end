@@ -92,7 +92,7 @@ module.exports = class Server
       .verb
         name: 'GET'
         response: 'Fetch a list of accounts'
-      response.render('relationship', relationship);
+      response.render 'relationship', relationship
 
     @expressServer.get '/rels/books', (request, response) =>
       relationship = new Relationship
@@ -100,7 +100,7 @@ module.exports = class Server
       .verb
         name: 'GET'
         response: 'Fetch a list of collections of books by bid currency'
-      response.render('relationship', relationship);
+      response.render 'relationship', relationship
 
     @expressServer.get '/accounts', (request, response) =>
       response.type 'application/hal+json'
