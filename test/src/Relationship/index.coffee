@@ -2,7 +2,7 @@ chai = require 'chai'
 chai.should()
 expect = chai.expect
 
-Relationship = require '../../src/Relationship'
+Relationship = require '../../../src/Relationship'
 
 describe 'Relationship', ->
   it 'should record the relationship name', ->

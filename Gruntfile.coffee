@@ -11,10 +11,10 @@ module.exports = (grunt) ->
         ext: '.js'
     copy:
       build:
-        src: ['thirdparty/**']
+        src: ['thirdparty/**', 'views/**', 'public/**']
         dest: 'lib/'
       coverage:
-        src: ['lib/test/**', 'lib/thirdparty/**']
+        src: ['lib/test/**', 'lib/thirdparty/**', 'lib/views/**', 'lib/public/**']
         dest: 'lib-cov/'
     blanket:
       coverage:

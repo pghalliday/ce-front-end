@@ -253,7 +253,20 @@ describe 'Server', ->
         .set('Accept', 'text/html')
         .expect(200)
         .expect('Content-Type', /html/)
-        .expect /ce:accounts/, done
+        .expect(/accounts/)
+        .expect(/GET/)
+        .expect /Fetch a list of accounts/, done
+
+    describe 'GET /rels/books', ->
+      it 'should return the books relationship documentation', (done) ->
+        request
+        .get('/rels/books')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect(/books/)
+        .expect(/GET/)
+        .expect /Fetch a list of collections of books by bid currency/, done
 
     describe 'GET /accounts', ->
       it 'should return the list of accounts', (done) ->

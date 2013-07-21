@@ -3,11 +3,14 @@ express = require 'express'
 zmq = require 'zmq'
 uuid = require 'node-uuid'
 hal = require 'nor-hal'
+path = require 'path'
 
 State = require('currency-market').State
 Delta = require('currency-market').Delta
 Operation = require('currency-market').Operation
 Amount = require('currency-market').Amount
+
+Relationship = require './Relationship'
 
 newHalResource = (object, self) ->
   resource = new hal.Resource object, self
@@ -62,11 +65,19 @@ module.exports = class Server
       connection.on 'end', =>
         @connections.splice @connections.indexOf connection, 1
 
-    # enable parsing of posted data
+    # express options
+    @expressServer.set 'views', path.join __dirname, '..', 'views'
+    @expressServer.set 'view engine', 'jade'
+    @expressServer.use express.favicon()
+    # TODO: add logging?
+    # @expressServer.use express.logger 'dev'
     @expressServer.use express.bodyParser()
+    @expressServer.use express.methodOverride()
+    @expressServer.use @expressServer.router
+    @expressServer.use express.static path.join __dirname, '..', 'public'
 
     # expose the HAL browser
-    @expressServer.use '/hal', express.static __dirname + '/../thirdparty/hal-browser'
+    @expressServer.use '/hal', express.static path.join __dirname, '..', 'thirdparty/hal-browser'
 
     @expressServer.get '/', (request, response) =>
       response.type 'application/hal+json'
@@ -76,7 +87,20 @@ module.exports = class Server
         .link('ce:books', '/books')
 
     @expressServer.get '/rels/accounts', (request, response) =>
-      response.send 200, 'ce:accounts'
+      relationship = new Relationship
+        name: 'accounts'
+      .verb
+        name: 'GET'
+        response: 'Fetch a list of accounts'
+      response.render('relationship', relationship);
+
+    @expressServer.get '/rels/books', (request, response) =>
+      relationship = new Relationship
+        name: 'books'
+      .verb
+        name: 'GET'
+        response: 'Fetch a list of collections of books by bid currency'
+      response.render('relationship', relationship);
 
     @expressServer.get '/accounts', (request, response) =>
       response.type 'application/hal+json'
