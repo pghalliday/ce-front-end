@@ -2,7 +2,27 @@ extends layout
 
 block content
   h1= name
-  each verb, name in verbs
-    h2= name
-    h3 Response
-    p= verb.response
+  each verb in verbs
+    h2= verb.name
+    p= verb.description
+    if verb.request
+      h3 Request
+      if verb.request.examples.length > 0
+        each example in verb.request.examples
+          p= example.description
+          pre= example.data
+    if verb.responses.length > 0
+      h3 Responses
+      each response in verb.responses
+        h4= response.name
+        if response.examples.length > 0
+          each example in response.examples
+            p= example.description
+            pre= example.data
+        if response.links.length > 0
+          h5 Links
+          ul
+            each link in response.links
+              li
+                a(href=link.relationship.url)= link.relationship.name
+                | - #{link.description}

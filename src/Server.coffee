@@ -11,13 +11,24 @@ Operation = require('currency-market').Operation
 Amount = require('currency-market').Amount
 
 Relationship = require './Relationship'
+Verb = require './Relationship/Verb'
+Response = require './Relationship/Response'
+Link = require './Relationship/Link'
+Request = require './Relationship/Request'
+Example = require './Relationship/Example'
+
+curies = [
+  name: 'ce'
+  href: '/rels/{rel}'
+  templated: true
+]
 
 newHalResource = (object, self) ->
   resource = new hal.Resource object, self
-  resource.link 'curie', 
-    name: 'ce'
-    href: '/rels/{rel}'
-    templated: true
+  for curie in curies
+    resource.link 'curie', 
+      curie
+  return resource
 
 module.exports = class Server
   constructor: (@options) ->
@@ -88,18 +99,30 @@ module.exports = class Server
 
     @expressServer.get '/rels/accounts', (request, response) =>
       relationship = new Relationship
-        name: 'accounts'
-      .verb
+        name: 'ce:accounts'
+      .verb new Verb
         name: 'GET'
-        response: 'Fetch a list of accounts'
+        description: 'Fetch a list of accounts'
+      .response new Response
+        name: '200 OK'
+      .link(new Link
+        curies: curies
+        relationship: 'ce:account'
+        description: 'an array of account links')
       response.render 'relationship', relationship
 
     @expressServer.get '/rels/books', (request, response) =>
       relationship = new Relationship
-        name: 'books'
-      .verb
+        name: 'ce:books'
+      .verb new Verb
         name: 'GET'
-        response: 'Fetch a list of collections of books by bid currency'
+        description: 'Fetch a list of collections of books by bid currency'
+      .response new Response
+        name: '200 OK'
+      .link(new Link
+        curies: curies
+        relationship: 'ce:books-by-bid-currency'
+        description: 'an array of links to collections of books by bid currency')
       response.render 'relationship', relationship
 
     @expressServer.get '/accounts', (request, response) =>
@@ -111,6 +134,32 @@ module.exports = class Server
         newHalResource({}, '/accounts')
         .link('ce:account', accounts)
 
+    @expressServer.get '/rels/account', (request, response) =>
+      relationship = new Relationship
+        name: 'ce:account'
+      .verb new Verb
+        name: 'GET'
+        description: 'Fetch an account state'
+      .response new Response
+        name: '200 OK'
+      .link(new Link
+        curies: curies
+        relationship: 'ce:balances'
+        description: 'link to the collection of currency balances')
+      .link(new Link
+        curies: curies
+        relationship: 'ce:deposits'
+        description: 'link to the collection of logged deposits')
+      .link(new Link
+        curies: curies
+        relationship: 'ce:withdrawals'
+        description: 'link to the collection of logged withdrawals')
+      .link(new Link
+        curies: curies
+        relationship: 'ce:orders'
+        description: 'link to the collection of active orders')
+      response.render 'relationship', relationship
+
     @expressServer.get '/accounts/:id', (request, response) =>
       response.type 'application/hal+json'
       response.json 200,
@@ -119,6 +168,170 @@ module.exports = class Server
         .link('ce:deposits', '/accounts/' + request.params.id + '/deposits')
         .link('ce:withdrawals', '/accounts/' + request.params.id + '/withdrawals')
         .link('ce:orders', '/accounts/' + request.params.id + '/orders')
+
+    @expressServer.get '/rels/balances', (request, response) =>
+      relationship = new Relationship
+        name: 'ce:balances'
+      .verb new Verb
+        name: 'GET'
+        description: 'Fetch the list of currency balances for the account'
+      .response new Response
+        name: '200 OK'
+      .link(new Link
+        curies: curies
+        relationship: 'ce:balance'
+        description: 'an array of links to balances in each currency')
+      response.render 'relationship', relationship
+
+    @expressServer.get '/rels/deposits', (request, response) =>
+      relationship = new Relationship
+        name: 'ce:deposits'
+      .verb(new Verb
+        name: 'GET'
+        description: 'Fetch the list of logged deposits for the account'
+      .response new Response
+        name: '200 OK'
+      .link(new Link
+        curies: curies
+        relationship: 'ce:deposit'
+        description: 'an array of links to logged deposits'))
+      .verb(new Verb
+        name: 'POST'
+        description: 'Deposit funds into an account'
+      .setRequest(new Request()
+      .example new Example
+        description: 'Deposit 5000 Euros'
+        data:
+          currency: 'EUR'
+          amount: '5000')
+      .response(new Response
+        name: '200 OK'
+      .example(new Example
+        description: 'After successfully applying the deposit operation a delta will be received giving the new funds available in the relevent account balance'
+        data:
+          operation:
+            sequence: 123456789
+            timestamp: 13789945543
+            account: 'AccountId'
+            deposit:
+              currency: 'EUR'
+              amount: '5000'
+          result:
+            funds: '123456787.454')
+      .example(new Example
+        description: 'When the deposit operation takes too long a pending flag will be received. The deposit may still succeed at a later time'
+        data:
+          operation:
+            sequence: 123456789
+            timestamp: 13789945543
+            account: 'AccountId'
+            deposit:
+              currency: 'EUR'
+              amount: '5000'
+          pending: true)
+      .example(new Example
+        description: 'When an error is encountered applying the deposit operation the error message will be received'
+        data:
+          operation:
+            sequence: 123456789
+            timestamp: 13789945543
+            account: 'AccountId'
+            deposit:
+              currency: 'EUR'
+              amount: '5000'
+          error: 'Error: some error')))
+      response.render 'relationship', relationship
+
+    @expressServer.get '/rels/withdrawals', (request, response) =>
+      relationship = new Relationship
+        name: 'ce:withdrawals'
+      .verb(new Verb
+        name: 'GET'
+        description: 'Fetch the list of logged withdrawals for the account'
+      .response new Response
+        name: '200 OK'
+      .link(new Link
+        curies: curies
+        relationship: 'ce:withdrawal'
+        description: 'an array of links to logged withdrawals'))
+      .verb(new Verb
+        name: 'POST'
+        description: 'Withdraw funds from an account'
+      .setRequest(new Request()
+      .example new Example
+        description: 'Withdraw 5000 Euros'
+        data:
+          currency: 'EUR'
+          amount: '5000')
+      .response(new Response
+        name: '200 OK'
+      .example(new Example
+        description: 'After successfully applying the withdraw operation a delta will be received giving the new funds available in the relevent account balance'
+        data:
+          operation:
+            sequence: 123456789
+            timestamp: 13789945543
+            account: 'AccountId'
+            withdraw:
+              currency: 'EUR'
+              amount: '5000'
+          result:
+            funds: '123456787.454')
+      .example(new Example
+        description: 'When the withdraw operation takes too long a pending flag will be received. The withdrawal may still succeed at a later time'
+        data:
+          operation:
+            sequence: 123456789
+            timestamp: 13789945543
+            account: 'AccountId'
+            withdraw:
+              currency: 'EUR'
+              amount: '5000'
+          pending: true)
+      .example(new Example
+        description: 'When an error is encountered applying the withdraw operation the error message will be received'
+        data:
+          operation:
+            sequence: 123456789
+            timestamp: 13789945543
+            account: 'AccountId'
+            withdraw:
+              currency: 'EUR'
+              amount: '5000'
+          error: 'Error: some error')))
+      response.render 'relationship', relationship
+
+    @expressServer.get '/rels/orders', (request, response) =>
+      relationship = new Relationship
+        name: 'ce:orders'
+      .verb(new Verb
+        name: 'GET'
+        description: 'Fetch the list of active orders for the account'
+      .response new Response
+        name: '200 OK'
+      .link(new Link
+        curies: curies
+        relationship: 'ce:order'
+        description: 'an array of links to active orders'))
+      .verb(new Verb
+        name: 'POST'
+        description: 'Submit a new order to the market'
+      .setRequest(new Request()
+      .example(new Example
+        description: 'For bid orders specify the bid price as the amount of the offer currency being bid for 1 unit of the bid currency and a bid amount as the number of units of the bid currency being requested'
+        data:
+          bidCurrency: 'EUR'
+          offerCurrency: 'BTC'
+          bidPrice: '0.01'
+          bidAmount: '5000')
+      .example(new Example
+        description: 'For offer orders specify the offer price as the amount of the bid currency required for 1 unit of the offer currency and an offer amount as the number of units of the offer currency being offered'
+        data:
+          bidCurrency: 'EUR'
+          offerCurrency: 'BTC'
+          offerPrice: '100'
+          offerAmount: '50')))
+      response.render 'relationship', relationship
 
     @expressServer.get '/accounts/:id/balances', (request, response) =>
       response.type 'application/hal+json'

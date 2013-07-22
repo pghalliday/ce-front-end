@@ -248,25 +248,45 @@ describe 'Server', ->
 
     describe 'GET /rels/accounts', ->
       it 'should return the accounts relationship documentation', (done) ->
+        # The first templated response seems to take a while
+        # I guess it is loading and caching modules
+        @timeout 5000
         request
         .get('/rels/accounts')
         .set('Accept', 'text/html')
         .expect(200)
         .expect('Content-Type', /html/)
-        .expect(/accounts/)
+        .expect(/ce:accounts/)
         .expect(/GET/)
-        .expect /Fetch a list of accounts/, done
+        .expect(/Fetch a list of accounts/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/Links/)
+        .expect(/ce:account/)
+        .expect(/\/rels\/account/)
+        .expect(/an array of account links/)
+        .end done
 
     describe 'GET /rels/books', ->
       it 'should return the books relationship documentation', (done) ->
+        # The first templated response seems to take a while
+        # I guess it is loading and caching modules
+        @timeout 5000
         request
         .get('/rels/books')
         .set('Accept', 'text/html')
         .expect(200)
         .expect('Content-Type', /html/)
-        .expect(/books/)
+        .expect(/ce:books/)
         .expect(/GET/)
-        .expect /Fetch a list of collections of books by bid currency/, done
+        .expect(/Fetch a list of collections of books by bid currency/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/Links/)
+        .expect(/ce:books-by-bid-currency/)
+        .expect(/\/rels\/books-by-bid-currency/)
+        .expect(/an array of links to collections of books by bid currency/)
+        .end done
 
     describe 'GET /accounts', ->
       it 'should return the list of accounts', (done) ->
@@ -289,6 +309,36 @@ describe 'Server', ->
           for account in accounts
             account.href.should.equal '/accounts/' + account.title
             checklist.check account.title
+
+    describe 'GET /rels/account', ->
+      it 'should return the account relationship documentation', (done) ->
+        # The first templated response seems to take a while
+        # I guess it is loading and caching modules
+        @timeout 5000
+        request
+        .get('/rels/account')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect(/ce:account/)
+        .expect(/GET/)
+        .expect(/Fetch an account state/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/Links/)
+        .expect(/ce:balances/)
+        .expect(/\/rels\/balances/)
+        .expect(/link to the collection of currency balances/)
+        .expect(/ce:deposits/)
+        .expect(/\/rels\/deposits/)
+        .expect(/link to the collection of logged deposits/)
+        .expect(/ce:withdrawals/)
+        .expect(/\/rels\/withdrawals/)
+        .expect(/link to the collection of logged withdrawals/)
+        .expect(/ce:orders/)
+        .expect(/\/rels\/orders/)
+        .expect(/link to the collection of active orders/)
+        .end done
 
     describe 'GET /accounts/:id', ->
       it 'should return a blank account if no account exists', (done) ->
@@ -328,6 +378,176 @@ describe 'Server', ->
           halResponse._links['ce:withdrawals'].href.should.equal '/accounts/Peter/withdrawals'
           halResponse._links['ce:orders'].href.should.equal '/accounts/Peter/orders'
           done()
+
+    describe 'GET /rels/balances', ->
+      it 'should return the balances relationship documentation', (done) ->
+        # The first templated response seems to take a while
+        # I guess it is loading and caching modules
+        @timeout 5000
+        request
+        .get('/rels/balances')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect(/ce:balances/)
+        .expect(/GET/)
+        .expect(/Fetch the list of currency balances for the account/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/Links/)
+        .expect(/ce:balance/)
+        .expect(/\/rels\/balance/)
+        .expect(/an array of links to balances in each currency/)
+        .end done
+
+    describe 'GET /rels/deposits', ->
+      it 'should return the deposits relationship documentation', (done) ->
+        # The first templated response seems to take a while
+        # I guess it is loading and caching modules
+        @timeout 5000
+        request
+        .get('/rels/deposits')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect(/ce:deposits/)
+        .expect(/GET/)
+        .expect(/Fetch the list of logged deposits for the account/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/Links/)
+        .expect(/ce:deposit/)
+        .expect(/\/rels\/deposit/)
+        .expect(/an array of links to logged deposits/)
+        .expect(/POST/)
+        .expect(/Deposit funds into an account/)
+        .expect(/Request/)
+        .expect(/Deposit 5000 Euros/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/After successfully applying the deposit operation a delta will be received giving the new funds available in the relevent account balance/)
+        .expect(/&quot;operation&quot;:/)
+        .expect(/&quot;sequence&quot;: 123456789/)
+        .expect(/&quot;timestamp&quot;: 13789945543/)
+        .expect(/&quot;account&quot;: &quot;AccountId&quot;/)
+        .expect(/&quot;deposit&quot;:/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/&quot;result&quot;:/)
+        .expect(/&quot;funds&quot;: &quot;123456787.454&quot;/)
+        .expect(/When the deposit operation takes too long a pending flag will be received. The deposit may still succeed at a later time/)
+        .expect(/&quot;operation&quot;:/)
+        .expect(/&quot;sequence&quot;: 123456789/)
+        .expect(/&quot;timestamp&quot;: 13789945543/)
+        .expect(/&quot;account&quot;: &quot;AccountId&quot;/)
+        .expect(/&quot;deposit&quot;:/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/&quot;pending&quot;: true/)
+        .expect(/When an error is encountered applying the deposit operation the error message will be received/)
+        .expect(/&quot;operation&quot;:/)
+        .expect(/&quot;sequence&quot;: 123456789/)
+        .expect(/&quot;timestamp&quot;: 13789945543/)
+        .expect(/&quot;account&quot;: &quot;AccountId&quot;/)
+        .expect(/&quot;deposit&quot;:/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/&quot;error&quot;: &quot;Error: some error&quot;/)
+        .end done
+
+    describe 'GET /rels/withdrawals', ->
+      it 'should return the withdrawals relationship documentation', (done) ->
+        # The first templated response seems to take a while
+        # I guess it is loading and caching modules
+        @timeout 5000
+        request
+        .get('/rels/withdrawals')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect(/ce:withdrawals/)
+        .expect(/GET/)
+        .expect(/Fetch the list of logged withdrawals for the account/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/Links/)
+        .expect(/ce:withdrawal/)
+        .expect(/\/rels\/withdrawal/)
+        .expect(/an array of links to logged withdrawals/)
+        .expect(/POST/)
+        .expect(/Withdraw funds from an account/)
+        .expect(/Request/)
+        .expect(/Withdraw 5000 Euros/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/After successfully applying the withdraw operation a delta will be received giving the new funds available in the relevent account balance/)
+        .expect(/&quot;operation&quot;:/)
+        .expect(/&quot;sequence&quot;: 123456789/)
+        .expect(/&quot;timestamp&quot;: 13789945543/)
+        .expect(/&quot;account&quot;: &quot;AccountId&quot;/)
+        .expect(/&quot;withdraw&quot;:/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/&quot;result&quot;:/)
+        .expect(/&quot;funds&quot;: &quot;123456787.454&quot;/)
+        .expect(/When the withdraw operation takes too long a pending flag will be received. The withdrawal may still succeed at a later time/)
+        .expect(/&quot;operation&quot;:/)
+        .expect(/&quot;sequence&quot;: 123456789/)
+        .expect(/&quot;timestamp&quot;: 13789945543/)
+        .expect(/&quot;account&quot;: &quot;AccountId&quot;/)
+        .expect(/&quot;withdraw&quot;:/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/&quot;pending&quot;: true/)
+        .expect(/When an error is encountered applying the withdraw operation the error message will be received/)
+        .expect(/&quot;operation&quot;:/)
+        .expect(/&quot;sequence&quot;: 123456789/)
+        .expect(/&quot;timestamp&quot;: 13789945543/)
+        .expect(/&quot;account&quot;: &quot;AccountId&quot;/)
+        .expect(/&quot;withdraw&quot;:/)
+        .expect(/&quot;currency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;amount&quot;: &quot;5000&quot;/)
+        .expect(/&quot;error&quot;: &quot;Error: some error&quot;/)
+        .end done
+
+    describe 'GET /rels/orders', ->
+      it 'should return the orders relationship documentation', (done) ->
+        # The first templated response seems to take a while
+        # I guess it is loading and caching modules
+        @timeout 5000
+        request
+        .get('/rels/orders')
+        .set('Accept', 'text/html')
+        .expect(200)
+        .expect('Content-Type', /html/)
+        .expect(/ce:orders/)
+        .expect(/GET/)
+        .expect(/Fetch the list of active orders for the account/)
+        .expect(/Responses/)
+        .expect(/200 OK/)
+        .expect(/Links/)
+        .expect(/ce:order/)
+        .expect(/\/rels\/order/)
+        .expect(/an array of links to active orders/)
+        .expect(/POST/)
+        .expect(/Submit a new order to the market/)
+        .expect(/Request/)
+        .expect(/For bid orders specify the bid price as the amount of the offer currency being bid for 1 unit of the bid currency and a bid amount as the number of units of the bid currency being requested/)        
+        .expect(/&quot;bidCurrency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;offerCurrency&quot;: &quot;BTC&quot;/)
+        .expect(/&quot;bidPrice&quot;: &quot;0.01&quot;/)
+        .expect(/&quot;bidAmount&quot;: &quot;5000&quot;/)
+        .expect(/For offer orders specify the offer price as the amount of the bid currency required for 1 unit of the offer currency and an offer amount as the number of units of the offer currency being offered/)        
+        .expect(/&quot;bidCurrency&quot;: &quot;EUR&quot;/)
+        .expect(/&quot;offerCurrency&quot;: &quot;BTC&quot;/)
+        .expect(/&quot;offerPrice&quot;: &quot;100&quot;/)
+        .expect(/&quot;offerAmount&quot;: &quot;50&quot;/)
+        # TODO: test response docs
+        .end done
 
     describe 'POST /accounts/:id/deposits', ->
       it 'should accept deposits and forward them to the ce-operation-hub', (done) ->

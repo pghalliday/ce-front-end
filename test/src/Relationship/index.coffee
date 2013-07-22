@@ -16,33 +16,12 @@ describe 'Relationship', ->
     .to.throw 'Must specify the relationship name'
 
   describe '#verb', ->
-    it 'should record the name, request example and response example and return the relationship for chaining', ->
+    it 'should record the verb and be chainable', ->
       relationship = new Relationship
         name: 'my relationship'
-      .verb
-        name: 'GET'
-        request: 'GET params'
-        response: 'GET response'
-      .verb
-        name: 'POST'
-        request: 'POST params'
-        response: 'POST response'
-      .verb
-        name: 'DELETE'
-        request: 'DELETE params'
-        response: 'DELETE response'
-      relationship.verbs['GET'].request.should.equal 'GET params'
-      relationship.verbs['GET'].response.should.equal 'GET response'
-      relationship.verbs['POST'].request.should.equal 'POST params'
-      relationship.verbs['POST'].response.should.equal 'POST response'
-      relationship.verbs['DELETE'].request.should.equal 'DELETE params'
-      relationship.verbs['DELETE'].response.should.equal 'DELETE response'
-
-    it 'should throw an error if no name is specified', ->
-      expect ->
-        relationship = new Relationship
-          name: 'my relationship'
-        .verb
-          request: 'GET params'
-          response: 'GET response'
-      .to.throw 'Must specify the verb name'
+      .verb('apple')
+      .verb('orange')
+      .verb('banana')
+      relationship.verbs[0].should.equal 'apple'
+      relationship.verbs[1].should.equal 'orange'
+      relationship.verbs[2].should.equal 'banana'
