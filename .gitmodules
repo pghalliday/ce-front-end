@@ -1,3 +1,0 @@
-[submodule "cookbooks/ce-front-end"]
-	path = cookbooks/ce-front-end
-	url = https://github.com/pghalliday/cookbook-ce-front-end.git
