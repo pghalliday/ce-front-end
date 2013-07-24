@@ -307,8 +307,8 @@ describe 'Server', ->
           halResponse._links.curie.templated.should.be.true
           accounts = halResponse._links['ce:account']
           for account in accounts
-            account.href.should.equal '/accounts/' + account.title
-            checklist.check account.title
+            account.href.should.equal '/accounts/' + account.name
+            checklist.check account.name
 
     describe 'GET /rels/account', ->
       it 'should return the account relationship documentation', (done) ->
@@ -546,39 +546,50 @@ describe 'Server', ->
         .expect(/&quot;offerCurrency&quot;: &quot;BTC&quot;/)
         .expect(/&quot;offerPrice&quot;: &quot;100&quot;/)
         .expect(/&quot;offerAmount&quot;: &quot;50&quot;/)
-        # TODO: test response docs
         .end done
 
     describe 'POST /accounts/:id/deposits', ->
-      it 'should accept deposits and forward them to the ce-operation-hub', (done) ->
+      it 'should respond with the new list of deposits setting the optional new property for the new deposit', (done) ->
         balance = state.getAccount('Peter').getBalance('EUR')
         expectedFunds = balance.funds.add new Amount '50'
         request
         .post('/accounts/Peter/deposits')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .send
           currency: 'EUR'
           amount: '50'
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
           balance.funds.compareTo(expectedFunds).should.equal 0
-          # TODO: actually we should get the new deposit or some kind of error or something
-          delta = new Delta
-            exported: response.body
-          delta.result.funds.compareTo(expectedFunds).should.equal 0
-          # TODO: check the balance?
-          # request
-          # .get('/accounts/Peter/balances/EUR')
-          # .set('Accept', 'application/json')
-          # .expect(200)
-          # .expect('Content-Type', /json/)
-          # .end (error, response) =>
-          #   expect(error).to.not.be.ok
-          #   response.body.funds.should.equal balance.funds.toString()
-          #   done()
-          done()
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Peter/deposits'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          # TODO: haven't implemented logged deposits yet
+          halResponse._links['ce:deposit'].should.have.length 0
+          request
+          .get('/accounts/Peter/balances/EUR')
+          .set('Accept', 'application/hal+json')
+          .expect(200)
+          .expect('Content-Type', /hal\+json/)
+          .end (error, response) =>
+            expect(error).to.not.be.ok
+            halResponse = JSON.parse response.text
+            halResponse.funds.should.equal balance.funds.toString()
+            done()
+
+      it.skip 'should respond with a 422 error if the deposit is not a valid request', (done) ->
+        done()
+
+      it.skip 'should respond with a 502 error if the deposit results in an unknown error from upstream components', (done) ->
+        done()
+
+      it.skip 'should respond with a 504 error if the deposit results in a server side timeout', (done) ->
+        done()
+
 
     describe 'GET /accounts/:id/deposits', ->
       it 'should return an empty object for unknown accounts', (done) ->
@@ -623,35 +634,49 @@ describe 'Server', ->
             done()
 
     describe 'POST /accounts/:id/withdrawals', ->
-      it 'should accept withdrawals and forward them to the ce-operation-hub', (done) ->
+      it 'should respond with the new list of withdrawals setting the optional new property for the new withdrawal', (done) ->
         balance = state.getAccount('Peter').getBalance('EUR')
         expectedFunds = balance.funds.subtract new Amount '50'
         request
         .post('/accounts/Peter/withdrawals')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .send
           currency: 'EUR'
           amount: '50'
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
           balance.funds.compareTo(expectedFunds).should.equal 0
-          # TODO: actually we should get the new withdrawal or some kind of error or something
-          delta = new Delta
-            exported: response.body
-          delta.result.funds.compareTo(expectedFunds).should.equal 0
-          # TODO: check the balance?
-          # request
-          # .get('/accounts/Peter/balances/EUR')
-          # .set('Accept', 'application/json')
-          # .expect(200)
-          # .expect('Content-Type', /json/)
-          # .end (error, response) =>
-          #   expect(error).to.not.be.ok
-          #   response.body.funds.should.equal balance.funds.toString()
-          #   done()
-          done()
+          halResponse = JSON.parse response.text
+          halResponse._links.self.href.should.equal '/accounts/Peter/withdrawals'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          # TODO: haven't implemented logged withdrawals yet
+          halResponse._links['ce:withdrawal'].should.have.length 0
+          request
+          .get('/accounts/Peter/balances/EUR')
+          .set('Accept', 'application/hal+json')
+          .expect(200)
+          .expect('Content-Type', /hal\+json/)
+          .end (error, response) =>
+            expect(error).to.not.be.ok
+            halResponse = JSON.parse response.text
+            halResponse.funds.should.equal balance.funds.toString()
+            done()
+
+      it.skip 'should respond with a 422 error if the withdrawal is not a valid request', (done) ->
+        done()
+
+      it.skip 'should respond with a 502 error if the withdrawal results in an unknown error from upstream components', (done) ->
+        done()
+
+      it.skip 'should respond with a 504 error if the withdrawal results in a server side timeout', (done) ->
+        done()
+
+      it.skip 'should respond with a 428 error if the withdrawal is a valid request but cannot be applied to the market because the funds are not available', (done) ->
+        done()
 
     describe 'GET /accounts/:id/withdrawals', ->
       it 'should return an empty object for unknown accounts', (done) ->
@@ -742,8 +767,8 @@ describe 'Server', ->
                   checklist.check id
               balances = halResponse._links['ce:balance']
               for balance in balances
-                balance.href.should.equal '/accounts/' + id + '/balances/' + balance.title
-                balancesChecklist.check balance.title
+                balance.href.should.equal '/accounts/' + id + '/balances/' + balance.name
+                balancesChecklist.check balance.name
             else
               checklist.check id
 
@@ -794,7 +819,7 @@ describe 'Server', ->
               checklist.check id + currency
 
     describe 'POST /accounts/:id/orders', ->
-      it 'should forward errors reported from the engine', (done) ->
+      it 'should respond with the new list of orders setting the optional newOrder property for the new order', (done) ->
         account = state.getAccount 'Peter'
         balance = account.getBalance 'EUR'
         orders = account.orders
@@ -803,103 +828,63 @@ describe 'Server', ->
           offerCurrency: 'EUR'
         request
         .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
+        .send
+          bidCurrency: 'BTC'
+          offerCurrency: 'EUR'
+          bidPrice: '100'
+          bidAmount: '50'
+        .expect(200)
+        .expect('Content-Type', /hal\+json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          balance.lockedFunds.compareTo(new Amount '5000').should.equal 0
+          halResponse = JSON.parse response.text
+          halResponse.newOrder.should.equal '' + 14
+          halResponse._links.self.href.should.equal '/accounts/Peter/orders'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:order'].should.have.length 1
+          order = halResponse._links['ce:order'][0]
+          order.name.should.equal '' + 14
+          order.href.should.equal '/accounts/Peter/orders/' + order.name
+          book[0].should.equal orders[14]
+          done()
+
+      it.skip 'should respond with a 422 error if the order is not a valid request', (done) ->
+        done()
+
+      it.skip 'should respond with a 502 error if the order results in an unknown error from upstream components', (done) ->
+        done()
+
+      it.skip 'should respond with a 504 error if the order results in a server side timeout', (done) ->
+        done()
+
+      it 'should respond with a 428 "Precondition Required" error if the order is a valid request but cannot be applied to the market because the funds are not available', (done) ->
+        account = state.getAccount 'Peter'
+        balance = account.getBalance 'EUR'
+        request
+        .post('/accounts/Peter/orders')
+        .set('Accept', 'application/hal+json')
         .send
           bidCurrency: 'BTC'
           offerCurrency: 'GBP'
           bidPrice: '100'
           bidAmount: '50'
-        .expect(200)
-        .expect('Content-Type', /json/)
+        .expect(428)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
-          error = response.body.error
-          error.should.equal 'Error: Cannot lock funds that are not available'
+          balance.lockedFunds.compareTo(new Amount '0').should.equal 0
+          halResponse = JSON.parse response.text
+          halResponse.error.should.equal 'Error: Cannot lock funds that are not available'
+          halResponse._links.self.href.should.equal '/accounts/Peter/orders'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:order'].should.have.length 0
           done()
-
-      it 'should accept orders and forward them to the ce-operation-hub', (done) ->
-        account = state.getAccount 'Peter'
-        balance = account.getBalance 'EUR'
-        orders = account.orders
-        book = state.getBook
-          bidCurrency: 'BTC'
-          offerCurrency: 'EUR'
-        request
-        .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
-        .send
-          bidCurrency: 'BTC'
-          offerCurrency: 'EUR'
-          bidPrice: '100'
-          bidAmount: '50'
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          delta = new Delta
-            exported: response.body
-          balance.lockedFunds.compareTo(new Amount '5000').should.equal 0
-          order = orders[delta.operation.sequence]
-          order.bidCurrency.should.equal 'BTC'
-          order.offerCurrency.should.equal 'EUR'
-          order.bidPrice.compareTo(new Amount '100').should.equal 0
-          order.bidAmount.compareTo(new Amount '50').should.equal 0
-          order.account.should.equal 'Peter'
-          book[0].should.equal order
-          done()
-
-      it 'should accept multiple orders posted simultaneously and forward them to the ce-operation-hub', (done) ->
-        checklist = new Checklist [
-          'EURBTC'
-          'USDEUR'
-          'BTCUSD'
-        ], done
-        account = state.getAccount 'Peter'
-        balanceEUR = account.getBalance 'EUR'
-        balanceBTC = account.getBalance 'BTC'
-        balanceUSD = account.getBalance 'USD'
-        request
-        .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
-        .send
-          bidCurrency: 'EUR'
-          offerCurrency: 'BTC'
-          bidPrice: '0.01'
-          bidAmount: '5000'
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          balanceBTC.lockedFunds.compareTo(new Amount '50').should.equal 0
-          checklist.check 'EURBTC'
-        request
-        .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
-        .send
-          bidCurrency: 'USD'
-          offerCurrency: 'EUR'
-          bidPrice: '0.5'
-          bidAmount: '5000'
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          balanceEUR.lockedFunds.compareTo(new Amount '2500').should.equal 0
-          checklist.check 'USDEUR'
-        request
-        .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
-        .send
-          bidCurrency: 'BTC'
-          offerCurrency: 'USD'
-          bidPrice: '50'
-          bidAmount: '25'
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          balanceUSD.lockedFunds.compareTo(new Amount '1250').should.equal 0
-          checklist.check 'BTCUSD'
 
     describe 'GET /accounts/:id/orders', ->
       it 'should return an empty object for unknown accounts', (done) ->
@@ -918,41 +903,41 @@ describe 'Server', ->
           halResponse._links['ce:order'].should.have.length 0
           done()
 
-      it 'should return the currently active orders for the account', (done) ->
+      it 'should return the logged (active or archived) orders for the account', (done) ->
         request
         .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .send
           bidCurrency: 'EUR'
           offerCurrency: 'BTC'
           bidPrice: '0.01'
           bidAmount: '5000'
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
           expect(error).to.not.be.ok
           request
           .post('/accounts/Peter/orders')
-          .set('Accept', 'application/json')
+          .set('Accept', 'application/hal+json')
           .send
             bidCurrency: 'USD'
             offerCurrency: 'EUR'
             bidPrice: '0.5'
             bidAmount: '5000'
           .expect(200)
-          .expect('Content-Type', /json/)
+          .expect('Content-Type', /hal\+json/)
           .end (error, response) =>
             expect(error).to.not.be.ok
             request
             .post('/accounts/Peter/orders')
-            .set('Accept', 'application/json')
+            .set('Accept', 'application/hal+json')
             .send
               bidCurrency: 'BTC'
               offerCurrency: 'USD'
               bidPrice: '50'
               bidAmount: '25'
             .expect(200)
-            .expect('Content-Type', /json/)
+            .expect('Content-Type', /hal\+json/)
             .end (error, response) =>
               expect(error).to.not.be.ok
               request
@@ -969,8 +954,11 @@ describe 'Server', ->
                 halResponse._links.curie.templated.should.be.true
                 halResponse._links['ce:order'].should.have.length 3
                 for order, index in halResponse._links['ce:order']
-                  order.href.should.equal '/accounts/Peter/orders/' + order.title
-                  order.title.should.equal '' + (index + 14)
+                  order.href.should.equal '/accounts/Peter/orders/' + order.name
+                  order.name.should.equal '' + (index + 14)
+                # TODO: also check for archived orders which should include any that
+                # have been completely executed, partially executed and cancelled, and maybe
+                # those that were not executed at all and cancelled (not sure about the last one)
                 done()
 
     describe 'GET /accounts/:id/orders/:sequence', ->
@@ -980,53 +968,44 @@ describe 'Server', ->
         .set('Accept', 'application/hal+json')
         .expect 404, done
 
-      it 'should return the order details', (done) ->
+      it 'should return the order details including the active state and a list of trades that were applied against the order', (done) ->
         request
         .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .send
           bidCurrency: 'EUR'
           offerCurrency: 'BTC'
           bidPrice: '0.01'
           bidAmount: '5000'
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
-          delta = new Delta
-            exported: response.body
+          halResponse = JSON.parse response.text
+          orderSequence = halResponse.newOrder
           request
-          .get('/accounts/Peter/orders/' + delta.operation.sequence)
+          .get('/accounts/Peter/orders/' + halResponse.newOrder)
           .set('Accept', 'application/hal+json')
           .expect(200)
           .expect('Content-Type', /hal\+json/)
           .end (error, response) =>
             expect(error).to.not.be.ok
             halResponse = JSON.parse response.text
-            halResponse._links.self.href.should.equal '/accounts/Peter/orders/' + delta.operation.sequence
+            halResponse._links.self.href.should.equal '/accounts/Peter/orders/' + orderSequence
             halResponse._links.curie.name.should.equal 'ce'
             halResponse._links.curie.href.should.equal '/rels/{rel}'
             halResponse._links.curie.templated.should.be.true
-            halResponse.sequence.should.equal delta.operation.sequence
+            halResponse.sequence.should.equal parseInt orderSequence
             halResponse.timestamp.should.be.a 'number'
             halResponse.account.should.equal 'Peter'
             halResponse.bidCurrency.should.equal 'EUR'
             halResponse.offerCurrency.should.equal 'BTC'
             halResponse.bidPrice.should.equal '0.01'
             halResponse.bidAmount.should.equal '5000'
+            # TODO: active flag and trades
             done()
 
     describe 'DELETE /accounts/:id/orders/:sequence', ->
-      it 'should send a cancel operation to the operation hub and return the engine error if the order does not exist', (done) ->
-        request
-        .del('/accounts/Peter/orders/1234165')
-        .set('Accept', 'application/json')
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          response.body.error.should.equal 'Error: Order cannot be found'
-          done()
-
-      it 'should send a cancel operation to the operation hub', (done) ->
+      it 'should respond with the new list of orders', (done) ->
         account = state.getAccount 'Peter'
         balance = account.getBalance 'EUR'
         orders = account.orders
@@ -1035,31 +1014,59 @@ describe 'Server', ->
           offerCurrency: 'EUR'
         request
         .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .send
           bidCurrency: 'BTC'
           offerCurrency: 'EUR'
           bidPrice: '100'
           bidAmount: '50'
         .expect(200)
-        .expect('Content-Type', /json/)
+        .expect('Content-Type', /hal\+json/)
         .end (error, response) =>
-          delta = new Delta
-            exported: response.body
+          halResponse = JSON.parse response.text
           request
-          .del('/accounts/Peter/orders/' + delta.operation.sequence)
-          .set('Accept', 'application/json')
+          .del('/accounts/Peter/orders/' + halResponse.newOrder)
+          .set('Accept', 'application/hal+json')
           .expect(200)
-          .expect('Content-Type', /json/)
+          .expect('Content-Type', /hal\+json/)
           .end (error, response) =>
             expect(error).to.not.be.ok
-            delta = new Delta
-              exported: response.body
-            balance.lockedFunds.compareTo(Amount.ZERO).should.equal 0
-            expect(orders[delta.operation.cancel.sequence]).to.not.be.ok
-            expect(book[0]).to.not.be.ok
-            delta.result.lockedFunds.compareTo(Amount.ZERO).should.equal 0
+            balance.lockedFunds.compareTo(new Amount '0').should.equal 0
+            halResponse = JSON.parse response.text
+            halResponse._links.self.href.should.equal '/accounts/Peter/orders'
+            halResponse._links.curie.name.should.equal 'ce'
+            halResponse._links.curie.href.should.equal '/rels/{rel}'
+            halResponse._links.curie.templated.should.be.true
+            halResponse._links['ce:order'].should.have.length 0
+            Object.keys(orders).should.have.length 0
+            book.should.have.length 0
             done()
+
+      it.skip 'should respond with a 422 error if the cancellation is not a valid request', (done) ->
+        done()
+
+      it.skip 'should respond with a 502 error if the cancellation results in an unknown error from upstream components', (done) ->
+        done()
+
+      it.skip 'should respond with a 504 error if the cancellation results in a server side timeout', (done) ->
+        done()
+
+      it 'should respond with a 428 "Precondition Required" error if the order is not active (already cancelled, executed, etc)', (done) ->
+        request
+        .del('/accounts/Peter/orders/1234165')
+        .set('Accept', 'application/hal+json')
+        .expect(428)
+        .expect('Content-Type', /hal\+json/)
+        .end (error, response) =>
+          expect(error).to.not.be.ok
+          halResponse = JSON.parse response.text
+          halResponse.error.should.equal 'Error: Order is not active'
+          halResponse._links.self.href.should.equal '/accounts/Peter/orders'
+          halResponse._links.curie.name.should.equal 'ce'
+          halResponse._links.curie.href.should.equal '/rels/{rel}'
+          halResponse._links.curie.templated.should.be.true
+          halResponse._links['ce:order'].should.have.length 0
+          done()
 
     describe 'GET /books', ->
       it 'should return an empty list if no books exist', (done) ->
@@ -1081,7 +1088,7 @@ describe 'Server', ->
       it 'should return the list of collections of books by bid currency', (done) ->
         request
         .post('/accounts/Peter/orders')
-        .set('Accept', 'application/json')
+        .set('Accept', 'application/hal+json')
         .send
           bidCurrency: 'EUR'
           offerCurrency: 'BTC'
@@ -1092,25 +1099,25 @@ describe 'Server', ->
         .end (error, response) =>
           request
           .post('/accounts/Peter/orders')
-          .set('Accept', 'application/json')
+          .set('Accept', 'application/hal+json')
           .send
             bidCurrency: 'USD'
             offerCurrency: 'EUR'
             bidPrice: '0.5'
             bidAmount: '5000'
           .expect(200)
-          .expect('Content-Type', /json/)
+          .expect('Content-Type', /hal\+json/)
           .end (error, response) =>
             request
             .post('/accounts/Peter/orders')
-            .set('Accept', 'application/json')
+            .set('Accept', 'application/hal+json')
             .send
               bidCurrency: 'BTC'
               offerCurrency: 'USD'
               bidPrice: '50'
               bidAmount: '25'
             .expect(200)
-            .expect('Content-Type', /json/)
+            .expect('Content-Type', /hal\+json/)
             .end (error, response) =>
               checks = for currency of state.books
                 currency
@@ -1130,8 +1137,8 @@ describe 'Server', ->
                 halResponse._links.curie.templated.should.be.true
                 booksByBidCurrency = halResponse._links['ce:books-by-bid-currency']
                 for books in booksByBidCurrency
-                  books.href.should.equal '/books/' + books.title
-                  checklist.check books.title
+                  books.href.should.equal '/books/' + books.name
+                  checklist.check books.name
 
     describe 'GET /books/:bidCurrency', ->
       it 'should return an empty list if no books exist', (done) ->
@@ -1203,39 +1210,8 @@ describe 'Server', ->
                 halResponse._links.curie.templated.should.be.true
                 booksByOfferCurrency = halResponse._links['ce:book']
                 for books in booksByOfferCurrency
-                  books.href.should.equal '/books/GBP/' + books.title
-                  checklist.check books.title
-
-    describe 'POST /books/:bidCurrency/:offerCurrency', ->
-      it 'should accept orders and forward them to the ce-operation-hub', (done) ->
-        account = state.getAccount 'Peter'
-        balance = account.getBalance 'EUR'
-        orders = account.orders
-        book = state.getBook
-          bidCurrency: 'BTC'
-          offerCurrency: 'EUR'
-        request
-        .post('/books/BTC/EUR')
-        .set('Accept', 'application/json')
-        .send
-          account: 'Peter'
-          bidPrice: '100'
-          bidAmount: '50'
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .end (error, response) =>
-          expect(error).to.not.be.ok
-          delta = new Delta
-            exported: response.body
-          balance.lockedFunds.compareTo(new Amount '5000').should.equal 0
-          order = orders[delta.operation.sequence]
-          order.bidCurrency.should.equal 'BTC'
-          order.offerCurrency.should.equal 'EUR'
-          order.bidPrice.compareTo(new Amount '100').should.equal 0
-          order.bidAmount.compareTo(new Amount '50').should.equal 0
-          order.account.should.equal 'Peter'
-          book[0].should.equal order
-          done()
+                  books.href.should.equal '/books/GBP/' + books.name
+                  checklist.check books.name
 
     describe 'GET /books/:bidCurrency/:offerCurrency', ->
       it 'should return an empty list of orders for an unknown book', (done) ->
@@ -1254,22 +1230,24 @@ describe 'Server', ->
           halResponse._links['ce:order-by-book'].should.have.length 0
           done()
 
-      it 'should return a list of orders for a book', (done) ->
+      it 'should return a list of active orders for a book', (done) ->
         request
-        .post('/books/BTC/EUR')
+        .post('/accounts/Peter/orders')
         .set('Accept', 'application/json')
         .send
-          account: 'Peter'
+          bidCurrency: 'BTC'
+          offerCurrency: 'EUR'
           bidPrice: '0.01'
           bidAmount: '5000'
         .expect(200)
         .expect('Content-Type', /json/)
         .end (error, response) =>
           request
-          .post('/books/BTC/EUR')
+          .post('/accounts/Tom/orders')
           .set('Accept', 'application/json')
           .send
-            account: 'Tom'
+            bidCurrency: 'BTC'
+            offerCurrency: 'EUR'
             offerPrice: '0.01'
             offerAmount: '2500'
           .expect(200)
@@ -1290,7 +1268,7 @@ describe 'Server', ->
               halResponse._links['ce:order-by-book'].should.have.length 2
               for order, index in halResponse._links['ce:order-by-book']
                 order.href.should.equal '/books/BTC/EUR/' + index
-                order.title.should.equal '' + index
+                order.name.should.equal '' + index
               done()
 
     describe 'GET /books/:bidCurrency/:offerCurrency/:index', ->
@@ -1312,8 +1290,8 @@ describe 'Server', ->
         .expect(200)
         .expect('Content-Type', /json/)
         .end (error, response) =>
-          delta = new Delta
-            exported: response.body
+          halResponse = JSON.parse response.text
+          orderSequence = halResponse.newOrder
           request
           .get('/books/EUR/BTC/0')
           .set('Accept', 'application/hal+json')
@@ -1326,7 +1304,7 @@ describe 'Server', ->
             halResponse._links.curie.name.should.equal 'ce'
             halResponse._links.curie.href.should.equal '/rels/{rel}'
             halResponse._links.curie.templated.should.be.true
-            halResponse.sequence.should.equal delta.operation.sequence
+            halResponse.sequence.should.equal parseInt orderSequence
             halResponse.timestamp.should.be.a 'number'
             halResponse.account.should.equal 'Peter'
             halResponse.bidCurrency.should.equal 'EUR'

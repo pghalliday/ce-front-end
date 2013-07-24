@@ -51,7 +51,7 @@ module.exports = class Server
           outstanding = @outstanding[operation.reference]
           if outstanding
             delete @outstanding[operation.reference]
-            outstanding.response.json 200, response
+            outstanding.callback response
 
     @ceDeltaHub.stream.on 'message', (message) =>
       delta = new Delta
@@ -129,7 +129,7 @@ module.exports = class Server
       response.type 'application/hal+json'
       accounts = for id of @state.accounts
         href: '/accounts/' + id
-        title: id
+        name: id
       response.json 200,
         newHalResource({}, '/accounts')
         .link('ce:account', accounts)
@@ -337,7 +337,7 @@ module.exports = class Server
       response.type 'application/hal+json'
       balances = for currency of @state.getAccount(request.params.id).balances
         href: '/accounts/' + request.params.id + '/balances/' + currency
-        title: currency
+        name: currency
       response.json 200,
         newHalResource({}, '/accounts/' + request.params.id + '/balances')
         .link('ce:balance', balances)
@@ -348,35 +348,39 @@ module.exports = class Server
         newHalResource @state.getAccount(request.params.id).getBalance(request.params.currency), '/accounts/' + request.params.id + '/balances/' + request.params.currency
 
     @expressServer.post '/accounts/:id/deposits', (request, response) =>
-      @sendOperation response, new Operation
+      @sendOperation new Operation(
         account: request.params.id
         deposit:
           currency: request.body.currency
-          amount: new Amount request.body.amount
+          amount: new Amount request.body.amount)
+      , (delta) =>
+        @sendDeposits
+          response: response
+          id: request.params.id
 
     @expressServer.get '/accounts/:id/deposits', (request, response) =>
-      response.type 'application/hal+json'
-      # TODO: return logged deposits
-      response.json 200,
-        newHalResource({}, '/accounts/' + request.params.id + '/deposits')
-        .link('ce:deposit', [])
+      @sendDeposits
+        response: response
+        id: request.params.id
 
     @expressServer.post '/accounts/:id/withdrawals', (request, response) =>
-      @sendOperation response, new Operation
+      @sendOperation new Operation(
         account: request.params.id
         withdraw:
           currency: request.body.currency
-          amount: new Amount request.body.amount
+          amount: new Amount request.body.amount)
+      , (delta) =>
+        @sendWithdrawals
+          response: response
+          id: request.params.id
 
     @expressServer.get '/accounts/:id/withdrawals', (request, response) =>
-      response.type 'application/hal+json'
-      # TODO: return logged withdrawals
-      response.json 200,
-        newHalResource({}, '/accounts/' + request.params.id + '/withdrawals')
-        .link('ce:withdrawal', [])
+      @sendWithdrawals
+        response: response
+        id: request.params.id
 
     @expressServer.post '/accounts/:id/orders', (request, response) =>
-      @sendOperation response, new Operation
+      @sendOperation new Operation(
         account: request.params.id
         submit: 
           bidCurrency: request.body.bidCurrency
@@ -384,16 +388,25 @@ module.exports = class Server
           bidPrice: if request.body.bidPrice then new Amount request.body.bidPrice
           bidAmount: if request.body.bidAmount then new Amount request.body.bidAmount
           offerPrice: if request.body.offerPrice then new Amount request.body.offerPrice
-          offerAmount: if request.body.offerAmount then new Amount request.body.offerAmount
+          offerAmount: if request.body.offerAmount then new Amount request.body.offerAmount)
+      , (delta) =>
+        if delta.error
+          @sendAccountOrders
+            code: 428
+            error: delta.error
+            response: response
+            id: request.params.id
+            newOrder: '' + delta.operation.sequence
+        else
+          @sendAccountOrders
+            response: response
+            id: request.params.id
+            newOrder: '' + delta.operation.sequence
 
     @expressServer.get '/accounts/:id/orders', (request, response) =>
-      response.type 'application/hal+json'
-      orders = for sequence of @state.getAccount(request.params.id).orders
-        href: '/accounts/' + request.params.id + '/orders/' + sequence
-        title: sequence
-      response.json 200,
-        newHalResource({}, '/accounts/' + request.params.id + '/orders')
-        .link('ce:order', orders)
+      @sendAccountOrders
+        response: response
+        id: request.params.id
 
     @expressServer.get '/accounts/:id/orders/:sequence', (request, response) =>
       order = @state.getAccount(request.params.id).orders[request.params.sequence]
@@ -405,16 +418,27 @@ module.exports = class Server
         response.send 404
 
     @expressServer.delete '/accounts/:id/orders/:sequence', (request, response) =>
-      @sendOperation response, new Operation
+      @sendOperation new Operation(
         account: request.params.id
         cancel: 
-          sequence: parseInt request.params.sequence
+          sequence: parseInt request.params.sequence)
+      , (delta) =>
+        if delta.error
+          @sendAccountOrders
+            code: 428
+            error: delta.error
+            response: response
+            id: request.params.id
+        else
+          @sendAccountOrders
+            response: response
+            id: request.params.id
 
     @expressServer.get '/books', (request, response) =>
       response.type 'application/hal+json'
       booksByBidCurrency = for currency of @state.books
         href: '/books/' + currency
-        title: currency
+        name: currency
       response.json 200,
         newHalResource({}, '/books')
         .link('ce:books-by-bid-currency', booksByBidCurrency)
@@ -423,21 +447,10 @@ module.exports = class Server
       response.type 'application/hal+json'
       booksByOfferCurrency = for currency of @state.getBooks request.params.bidCurrency
         href: '/books/' + request.params.bidCurrency + '/' + currency
-        title: currency
+        name: currency
       response.json 200,
         newHalResource({}, '/books/' + request.params.bidCurrency)
         .link('ce:book', booksByOfferCurrency)
-
-    @expressServer.post '/books/:bidCurrency/:offerCurrency', (request, response) =>
-      @sendOperation response, new Operation
-        account: request.body.account
-        submit: 
-          bidCurrency: request.params.bidCurrency
-          offerCurrency: request.params.offerCurrency
-          bidPrice: if request.body.bidPrice then new Amount request.body.bidPrice
-          bidAmount: if request.body.bidAmount then new Amount request.body.bidAmount
-          offerPrice: if request.body.offerPrice then new Amount request.body.offerPrice
-          offerAmount: if request.body.offerAmount then new Amount request.body.offerAmount
 
     @expressServer.get '/books/:bidCurrency/:offerCurrency', (request, response) =>
       response.type 'application/hal+json'
@@ -446,7 +459,7 @@ module.exports = class Server
         offerCurrency: request.params.offerCurrency
       orders = for index of orders
         href: '/books/' + request.params.bidCurrency + '/' + request.params.offerCurrency + '/' + index
-        title: index
+        name: index
       response.json 200,
         newHalResource({}, '/books/' + request.params.bidCurrency + '/' + request.params.offerCurrency)
         .link('ce:order-by-book', orders)
@@ -463,19 +476,45 @@ module.exports = class Server
       else
         response.send 404
 
+  sendDeposits: (params) =>
+    params.response.type 'application/hal+json'
+    # TODO: return logged deposits and apply an optional new flag to the deposit sequence given in params.new
+    params.response.json 200,
+      newHalResource({}, '/accounts/' + params.id + '/deposits')
+      .link('ce:deposit', [])
+
+  sendWithdrawals: (params) =>
+    params.response.type 'application/hal+json'
+    # TODO: return logged withdrawals and apply an optional new flag to the withdrawal sequence given in params.new
+    params.response.json 200,
+      newHalResource({}, '/accounts/' + params.id + '/withdrawals')
+      .link('ce:withdrawal', [])
+
+  sendAccountOrders: (params) =>
+    params.response.type 'application/hal+json'
+    orders = for sequence of @state.getAccount(params.id).orders
+      href: '/accounts/' + params.id + '/orders/' + sequence
+      name: sequence
+    params.response.json params.code || 200,
+      newHalResource(
+        newOrder: params.newOrder
+        error: params.error
+      , '/accounts/' + params.id + '/orders')
+      .link('ce:order', orders)
+
   applyDelta: (delta) =>
     @state.apply delta
     operation = delta.operation
     outstanding = @outstanding[operation.reference]
     if outstanding
       delete @outstanding[operation.reference]
-      outstanding.response.json 200, delta
+      outstanding.callback delta
 
-  sendOperation: (response, operation) =>
+  sendOperation: (operation, callback) =>
     reference = uuid.v1()
     operation.reference = reference
     @outstanding[reference] = 
-      response: response
+      callback: callback
     @ceOperationHub.send JSON.stringify operation
 
   stop: (callback) =>
